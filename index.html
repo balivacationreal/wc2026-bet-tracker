@@ -4,33 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>World Cup 2026 Bet Tracker</title>
-    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 p-4 md:p-8">
 
     <div class="max-w-6xl mx-auto">
-        <!-- Header -->
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <div>
-                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">🏆 WC 2026 Bet Tracker</h1>
-                <p class="text-slate-500 mt-1">Manage 1-on-1 bets in IDR with Handicaps</p>
+            <div class="flex items-center gap-4">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/2026_FIFA_World_Cup_logo.svg/200px-2026_FIFA_World_Cup_logo.svg.png" alt="WC 2026 Logo" class="h-16 w-auto object-contain">
+                <div>
+                    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Bet Tracker</h1>
+                    <p class="text-slate-500 mt-1">Manage 1-on-1 bets in IDR with Handicaps</p>
+                </div>
             </div>
-            <button onclick="resetData()" class="mt-4 md:mt-0 bg-red-100 text-red-600 hover:bg-red-200 px-4 py-2 rounded-lg font-medium transition text-sm">
-                Reset Demo Data
-            </button>
+            
+            <div class="mt-4 md:mt-0 flex flex-col md:flex-row gap-3 items-center">
+                <button id="btn-reset" onclick="resetData()" class="hidden bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 px-4 py-2 rounded-lg font-medium transition text-sm">
+                    Reset Demo Data
+                </button>
+                
+                <button id="btn-login" onclick="toggleAuth()" class="bg-slate-800 text-white hover:bg-slate-700 px-6 py-2 rounded-lg font-medium transition text-sm shadow-sm">
+                    🔒 Admin Login
+                </button>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left Column: Matches -->
             <div class="lg:col-span-2 space-y-6">
-                <h2 class="text-xl font-bold text-slate-800 border-b pb-2">Fixtures & Bets</h2>
-                <div id="matches-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Matches injected via JS -->
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h2 class="text-xl font-bold text-slate-800">Fixtures & Bets</h2>
+                    <span id="auth-status-badge" class="text-xs font-bold px-2 py-1 bg-slate-200 text-slate-600 rounded-md uppercase tracking-wide">Viewing as Guest</span>
                 </div>
+                <div id="matches-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    </div>
             </div>
 
-            <!-- Right Column: Leaderboard & Debts -->
             <div class="space-y-6">
                 <h2 class="text-xl font-bold text-slate-800 border-b pb-2">Leaderboard</h2>
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -42,22 +50,19 @@
                             </tr>
                         </thead>
                         <tbody id="leaderboard-body" class="divide-y divide-slate-100">
-                            <!-- Leaderboard injected via JS -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
 
                 <h2 class="text-xl font-bold text-slate-800 border-b pb-2 mt-8">Settlements (Debts)</h2>
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
                     <ul id="debts-list" class="space-y-3 text-sm">
-                        <!-- Debts injected via JS -->
-                    </ul>
+                        </ul>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal: Add / Edit Bet -->
     <div id="bet-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto">
             <div class="bg-slate-800 p-4 text-white flex justify-between items-center sticky top-0">
@@ -108,7 +113,6 @@
         </div>
     </div>
 
-    <!-- Modal: Set Result -->
     <div id="result-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="bg-slate-800 p-4 text-white flex justify-between items-center">
@@ -138,7 +142,10 @@
     </div>
 
     <script>
-        // Data Structure
+        // Data Structure & Security
+        const ADMIN_PASSWORD = "admin2026";
+        let isAdmin = false; // Starts in Guest mode
+
         const participants = ["Ngurah", "Wipradnyana", "Wage", "Suta", "Putu Ardi", "Made Mudiana", "Darsika", "Sony"];
         
         const defaultMatches = [
@@ -171,24 +178,76 @@
 
         // App Initialization
         function init() {
-            const stored = localStorage.getItem('wc2026_bets_v3');
+            // Keep admin state during session reloads if desired, but default to safe Guest state
+            const storedAdmin = sessionStorage.getItem('wc2026_admin');
+            if (storedAdmin === 'true') isAdmin = true;
+
+            const stored = localStorage.getItem('wc2026_bets_final');
             if (stored) {
                 matches = JSON.parse(stored);
             } else {
                 matches = JSON.parse(JSON.stringify(defaultMatches));
                 saveData();
             }
+            updateUIState();
             renderApp();
         }
 
         function saveData() {
-            localStorage.setItem('wc2026_bets_v3', JSON.stringify(matches));
+            localStorage.setItem('wc2026_bets_final', JSON.stringify(matches));
         }
 
         function resetData() {
+            if (!isAdmin) return;
             if(confirm("Are you sure you want to reset the demo? All data will be reset to defaults.")){
-                localStorage.removeItem('wc2026_bets_v3');
+                localStorage.removeItem('wc2026_bets_final');
                 init();
+            }
+        }
+
+        // Authentication Logic
+        function toggleAuth() {
+            if (isAdmin) {
+                // Logout
+                isAdmin = false;
+                sessionStorage.removeItem('wc2026_admin');
+                alert("Logged out successfully. You are now in Guest mode.");
+            } else {
+                // Login
+                const password = prompt("Please enter the Admin Password:");
+                if (password === ADMIN_PASSWORD) {
+                    isAdmin = true;
+                    sessionStorage.setItem('wc2026_admin', 'true');
+                    alert("Login successful. You can now edit matches and bets.");
+                } else if (password !== null) {
+                    alert("Incorrect password.");
+                }
+            }
+            updateUIState();
+            renderApp(); // Re-render to show/hide admin buttons
+        }
+
+        function updateUIState() {
+            const btnLogin = document.getElementById('btn-login');
+            const btnReset = document.getElementById('btn-reset');
+            const statusBadge = document.getElementById('auth-status-badge');
+
+            if (isAdmin) {
+                btnLogin.innerHTML = "🔓 Logout";
+                btnLogin.classList.replace('bg-slate-800', 'bg-red-600');
+                btnLogin.classList.replace('hover:bg-slate-700', 'hover:bg-red-700');
+                btnReset.classList.remove('hidden');
+                statusBadge.innerText = "Admin Mode Active";
+                statusBadge.classList.replace('bg-slate-200', 'bg-emerald-100');
+                statusBadge.classList.replace('text-slate-600', 'text-emerald-700');
+            } else {
+                btnLogin.innerHTML = "🔒 Admin Login";
+                btnLogin.classList.replace('bg-red-600', 'bg-slate-800');
+                btnLogin.classList.replace('hover:bg-red-700', 'hover:bg-slate-700');
+                btnReset.classList.add('hidden');
+                statusBadge.innerText = "Viewing as Guest";
+                statusBadge.classList.replace('bg-emerald-100', 'bg-slate-200');
+                statusBadge.classList.replace('text-emerald-700', 'text-slate-600');
             }
         }
 
@@ -217,288 +276,14 @@
                                 if (b.handicapTeam && b.handicapValue > 0) {
                                     handicapStr = `<span class="block mt-1 text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded inline-block">Handicap: ${b.handicapTeam} +${b.handicapValue}</span>`;
                                 }
+                                
+                                // Only show Edit button if Admin
+                                const editButton = isAdmin 
+                                    ? `<button onclick="openEditBetModal(${m.id}, ${b.id})" class="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded font-medium transition">✏️ Edit Bet</button>`
+                                    : ``;
+
                                 return `
                                 <li class="text-sm bg-slate-50 p-3 rounded-lg flex flex-col border border-slate-100 group relative">
                                     <div class="flex justify-between items-start">
                                         <div class="flex flex-col">
-                                            <span><b class="text-slate-800">${b.p1}</b> <span class="text-slate-400 text-xs">(${b.p1Choice})</span></span>
-                                            <span class="text-slate-400 text-xs italic">vs</span>
-                                            <span><b class="text-slate-800">${b.p2}</b> <span class="text-slate-400 text-xs">(${b.p2Choice})</span></span>
-                                        </div>
-                                        <div class="text-right flex flex-col items-end gap-2">
-                                            <span class="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">${formatIDR(b.amount)}</span>
-                                            <button onclick="openEditBetModal(${m.id}, ${b.id})" class="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded font-medium transition">
-                                                ✏️ Edit Bet
-                                            </button>
-                                        </div>
-                                    </div>
-                                    ${handicapStr}
-                                </li>
-                            `}).join('')}
-                        </ul>
-                    </div>`;
-                }
-
-                // Both finished and upcoming games now get "Add Bet" functionality so users can append old data easily
-                const actionsHTML = `
-                    <div class="mt-4 flex gap-2">
-                        <button onclick="openBetModal(${m.id})" class="flex-1 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 py-2 rounded-lg text-sm font-bold transition">Add Bet</button>
-                        <button onclick="openResultModal(${m.id})" class="flex-1 ${isFinished ? 'bg-slate-600 hover:bg-slate-700' : 'bg-blue-600 hover:bg-blue-700'} text-white py-2 rounded-lg text-sm font-bold transition">
-                            ${isFinished ? 'Edit Result' : 'Set Result'}
-                        </button>
-                    </div>`;
-
-                const card = `
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
-                        <div>
-                            <div class="flex justify-between items-center mb-4">
-                                <span class="text-xs text-slate-400 font-bold tracking-wider uppercase">${m.date}</span>
-                                ${scoreHTML}
-                            </div>
-                            <div class="flex justify-between items-center text-lg font-bold mb-2">
-                                <span class="w-2/5 text-right">${m.home}</span>
-                                <span class="w-1/5 text-center text-slate-300 text-sm">vs</span>
-                                <span class="w-2/5 text-left">${m.away}</span>
-                            </div>
-                            ${betsHTML}
-                        </div>
-                        ${actionsHTML}
-                    </div>
-                `;
-                container.innerHTML += card;
-            });
-        }
-
-        function renderLeaderboardAndDebts() {
-            const tbody = document.getElementById('leaderboard-body');
-            const debtsList = document.getElementById('debts-list');
-            tbody.innerHTML = '';
-            debtsList.innerHTML = '';
-
-            let stats = {};
-            let debts = {}; 
-            
-            participants.forEach(p => {
-                stats[p] = { name: p, net: 0 };
-                debts[p] = {};
-            });
-
-            matches.forEach(m => {
-                if (m.status === 'Finished' && m.homeScore !== null && m.awayScore !== null) {
-                    m.bets.forEach(b => {
-                        let homeAdjusted = m.homeScore;
-                        let awayAdjusted = m.awayScore;
-                        
-                        if (b.handicapTeam === m.home) homeAdjusted += b.handicapValue;
-                        if (b.handicapTeam === m.away) awayAdjusted += b.handicapValue;
-
-                        let winner = null;
-                        if (homeAdjusted > awayAdjusted) winner = m.home;
-                        else if (awayAdjusted > homeAdjusted) winner = m.away;
-                        
-                        if (winner) { 
-                            if (b.p1Choice === winner) {
-                                stats[b.p1].net += b.amount;
-                                stats[b.p2].net -= b.amount;
-                                debts[b.p2][b.p1] = (debts[b.p2][b.p1] || 0) + b.amount;
-                                debts[b.p1][b.p2] = (debts[b.p1][b.p2] || 0) - b.amount;
-                            } else if (b.p2Choice === winner) {
-                                stats[b.p2].net += b.amount;
-                                stats[b.p1].net -= b.amount;
-                                debts[b.p1][b.p2] = (debts[b.p1][b.p2] || 0) + b.amount;
-                                debts[b.p2][b.p1] = (debts[b.p2][b.p1] || 0) - b.amount;
-                            }
-                        }
-                    });
-                }
-            });
-
-            const sortedStats = Object.values(stats).sort((a, b) => b.net - a.net);
-
-            sortedStats.forEach((s, index) => {
-                const colorClass = s.net > 0 ? 'text-emerald-600' : (s.net < 0 ? 'text-red-500' : 'text-slate-500');
-                const medal = index === 0 ? '🥇 ' : index === 1 ? '🥈 ' : index === 2 ? '🥉 ' : '';
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="p-4 font-bold text-slate-700">${medal}${s.name}</td>
-                        <td class="p-4 text-right font-bold ${colorClass}">${formatIDR(s.net)}</td>
-                    </tr>
-                `;
-            });
-
-            let hasDebts = false;
-            participants.forEach(debtor => {
-                for (const creditor in debts[debtor]) {
-                    if (debts[debtor][creditor] > 0) {
-                        hasDebts = true;
-                        debtsList.innerHTML += `
-                            <li class="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
-                                <span><span class="font-bold text-red-500">${debtor}</span> owes <span class="font-bold text-emerald-600">${creditor}</span></span>
-                                <span class="font-bold text-slate-700">${formatIDR(debts[debtor][creditor])}</span>
-                            </li>
-                        `;
-                    }
-                }
-            });
-
-            if (!hasDebts) {
-                debtsList.innerHTML = `<li class="text-slate-400 italic text-center py-2">No active debts. All squared up!</li>`;
-            }
-        }
-
-        // Modals Logic
-        function populatePlayerDropdowns() {
-            const html = `<option value="">-- Select Player --</option>` + 
-                         participants.map(p => `<option value="${p}">${p}</option>`).join('');
-            document.getElementById('player-home').innerHTML = html;
-            document.getElementById('player-away').innerHTML = html;
-        }
-
-        function openBetModal(matchId) {
-            const match = matches.find(m => m.id === matchId);
-            document.getElementById('bet-match-id').value = match.id;
-            document.getElementById('bet-id').value = ''; // Empty means "new bet"
-            document.getElementById('bet-modal-title').innerText = "Add New Bet";
-            document.getElementById('delete-bet-btn').classList.add('hidden');
-            
-            document.getElementById('label-team-home').innerText = `Who picks ${match.home}?`;
-            document.getElementById('label-team-away').innerText = `Who picks ${match.away}?`;
-            
-            const hcSelect = document.getElementById('bet-handicap-team');
-            hcSelect.innerHTML = `
-                <option value="">No Handicap</option>
-                <option value="${match.home}">${match.home}</option>
-                <option value="${match.away}">${match.away}</option>
-            `;
-            
-            document.getElementById('bet-amount').value = '';
-            document.getElementById('bet-handicap-value').value = 0;
-            
-            populatePlayerDropdowns();
-            document.getElementById('bet-modal').classList.remove('hidden');
-        }
-
-        function openEditBetModal(matchId, betId) {
-            const match = matches.find(m => m.id === matchId);
-            const bet = match.bets.find(b => b.id === betId);
-            
-            document.getElementById('bet-match-id').value = match.id;
-            document.getElementById('bet-id').value = bet.id;
-            document.getElementById('bet-modal-title').innerText = "Edit Existing Bet";
-            document.getElementById('delete-bet-btn').classList.remove('hidden');
-            
-            document.getElementById('label-team-home').innerText = `Who picks ${match.home}?`;
-            document.getElementById('label-team-away').innerText = `Who picks ${match.away}?`;
-            
-            const hcSelect = document.getElementById('bet-handicap-team');
-            hcSelect.innerHTML = `
-                <option value="">No Handicap</option>
-                <option value="${match.home}">${match.home}</option>
-                <option value="${match.away}">${match.away}</option>
-            `;
-            
-            populatePlayerDropdowns();
-            
-            // Pre-fill existing data
-            document.getElementById('player-home').value = bet.p1;
-            document.getElementById('player-away').value = bet.p2;
-            document.getElementById('bet-handicap-team').value = bet.handicapTeam;
-            document.getElementById('bet-handicap-value').value = bet.handicapValue;
-            document.getElementById('bet-amount').value = bet.amount;
-            
-            document.getElementById('bet-modal').classList.remove('hidden');
-        }
-
-        function submitBet(e) {
-            e.preventDefault();
-            const matchId = parseInt(document.getElementById('bet-match-id').value);
-            const betId = document.getElementById('bet-id').value;
-            const p1 = document.getElementById('player-home').value;
-            const p2 = document.getElementById('player-away').value;
-            const amount = parseInt(document.getElementById('bet-amount').value);
-            const handicapTeam = document.getElementById('bet-handicap-team').value;
-            const handicapValue = parseFloat(document.getElementById('bet-handicap-value').value);
-
-            if (p1 === p2) {
-                alert("A player cannot bet against themselves!");
-                return;
-            }
-
-            const match = matches.find(m => m.id === matchId);
-
-            if (betId === '') {
-                // Insert Mode
-                match.bets.push({
-                    id: Date.now(),
-                    p1: p1,
-                    p1Choice: match.home,
-                    p2: p2,
-                    p2Choice: match.away,
-                    amount: amount,
-                    handicapTeam: handicapTeam,
-                    handicapValue: handicapValue || 0
-                });
-            } else {
-                // Update Mode
-                const bet = match.bets.find(b => b.id === parseInt(betId));
-                bet.p1 = p1;
-                bet.p2 = p2;
-                bet.amount = amount;
-                bet.handicapTeam = handicapTeam;
-                bet.handicapValue = handicapValue || 0;
-            }
-
-            saveData();
-            renderApp();
-            closeModal('bet-modal');
-        }
-
-        function deleteBet() {
-            if (confirm("Are you sure you want to permanently delete this bet?")) {
-                const matchId = parseInt(document.getElementById('bet-match-id').value);
-                const betId = parseInt(document.getElementById('bet-id').value);
-                
-                const match = matches.find(m => m.id === matchId);
-                match.bets = match.bets.filter(b => b.id !== betId);
-                
-                saveData();
-                renderApp();
-                closeModal('bet-modal');
-            }
-        }
-
-        function openResultModal(matchId) {
-            const match = matches.find(m => m.id === matchId);
-            document.getElementById('result-match-id').value = match.id;
-            document.getElementById('score-label-home').innerText = match.home;
-            document.getElementById('score-label-away').innerText = match.away;
-            document.getElementById('score-home').value = match.homeScore !== null ? match.homeScore : '';
-            document.getElementById('score-away').value = match.awayScore !== null ? match.awayScore : '';
-            document.getElementById('result-modal').classList.remove('hidden');
-        }
-
-        function submitResult(e) {
-            e.preventDefault();
-            const matchId = parseInt(document.getElementById('result-match-id').value);
-            const scoreHome = parseInt(document.getElementById('score-home').value);
-            const scoreAway = parseInt(document.getElementById('score-away').value);
-
-            const match = matches.find(m => m.id === matchId);
-            match.homeScore = scoreHome;
-            match.awayScore = scoreAway;
-            match.status = 'Finished';
-
-            saveData();
-            renderApp();
-            closeModal('result-modal');
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.add('hidden');
-        }
-
-        // Start App
-        init();
-    </script>
-</body>
-</html>
+                                            <span><b class="text-
