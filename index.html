@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Cup 2026 Bet Tracker</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <div>
+                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">🏆 WC 2026 Bet Tracker</h1>
+                <p class="text-slate-500 mt-1">Manage 1-on-1 bets in IDR</p>
+            </div>
+            <button onclick="resetData()" class="mt-4 md:mt-0 bg-red-100 text-red-600 hover:bg-red-200 px-4 py-2 rounded-lg font-medium transition text-sm">
+                Reset Demo Data
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column: Matches -->
+            <div class="lg:col-span-2 space-y-6">
+                <h2 class="text-xl font-bold text-slate-800 border-b pb-2">Fixtures & Bets</h2>
+                <div id="matches-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Matches injected via JS -->
+                </div>
+            </div>
+
+            <!-- Right Column: Leaderboard -->
+            <div class="space-y-6">
+                <h2 class="text-xl font-bold text-slate-800 border-b pb-2">Leaderboard</h2>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                                <th class="p-4 border-b">Player</th>
+                                <th class="p-4 border-b text-right">Net Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body" class="divide-y divide-slate-100">
+                            <!-- Leaderboard injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add Bet -->
+    <div id="bet-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div class="bg-slate-800 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg">Add New Bet</h3>
+                <button onclick="closeModal('bet-modal')" class="text-slate-300 hover:text-white">&times;</button>
+            </div>
+            <div class="p-6">
+                <form id="bet-form" onsubmit="submitBet(event)">
+                    <input type="hidden" id="bet-match-id">
+                    
+                    <div class="mb-4">
+                        <label id="label-team-home" class="block text-sm font-bold text-slate-700 mb-1">Team A Pick</label>
+                        <select id="player-home" required class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+                            <!-- Options injected -->
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label id="label-team-away" class="block text-sm font-bold text-slate-700 mb-1">Team B Pick</label>
+                        <select id="player-away" required class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+                            <!-- Options injected -->
+                        </select>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Bet Amount (IDR)</label>
+                        <input type="number" id="bet-amount" required min="1000" step="1000" class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. 50000">
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition">Place Bet</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Set Result -->
+    <div id="result-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div class="bg-slate-800 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg">Set Match Result</h3>
+                <button onclick="closeModal('result-modal')" class="text-slate-300 hover:text-white">&times;</button>
+            </div>
+            <div class="p-6">
+                <form id="result-form" onsubmit="submitResult(event)">
+                    <input type="hidden" id="result-match-id">
+                    
+                    <div class="flex items-center justify-between gap-4 mb-6">
+                        <div class="text-center w-1/2">
+                            <label id="score-label-home" class="block text-sm font-bold text-slate-700 mb-2 truncate"></label>
+                            <input type="number" id="score-home" required min="0" class="w-full text-center text-2xl border-slate-300 border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <span class="text-xl font-bold text-slate-400 mt-6">-</span>
+                        <div class="text-center w-1/2">
+                            <label id="score-label-away" class="block text-sm font-bold text-slate-700 mb-2 truncate"></label>
+                            <input type="number" id="score-away" required min="0" class="w-full text-center text-2xl border-slate-300 border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition">Save Result & Calculate</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data Structure
+        const participants = ["Ngurah", "Wipradnyana", "Wage", "Suta", "Putu Ardi", "Made Mudiana", "Darsika", "Sony"];
+        
+        const defaultMatches = [
+            { id: 1, home: "Mexico", away: "South Africa", homeScore: 2, awayScore: 0, status: "Finished", date: "11 Jun 2026", bets: [
+                { id: 101, p1: "Ngurah", p1Choice: "Mexico", p2: "Sony", p2Choice: "South Africa", amount: 100000 }
+            ]},
+            { id: 2, home: "USA", away: "Paraguay", homeScore: 4, awayScore: 1, status: "Finished", date: "12 Jun 2026", bets: [
+                { id: 102, p1: "Wage", p1Choice: "USA", p2: "Suta", p2Choice: "Paraguay", amount: 50000 },
+                { id: 103, p1: "Putu Ardi", p1Choice: "USA", p2: "Made Mudiana", p2Choice: "Paraguay", amount: 150000 }
+            ]},
+            { id: 3, home: "Brazil", away: "Morocco", homeScore: 1, awayScore: 1, status: "Finished", date: "14 Jun 2026", bets: []},
+            { id: 4, home: "Spain", away: "Cape Verde", homeScore: null, awayScore: null, status: "Upcoming", date: "16 Jun 2026", bets: [
+                { id: 104, p1: "Darsika", p1Choice: "Spain", p2: "Wipradnyana", p2Choice: "Cape Verde", amount: 200000 }
+            ]},
+            { id: 5, home: "Argentina", away: "Algeria", homeScore: null, awayScore: null, status: "Upcoming", date: "17 Jun 2026", bets: []},
+            { id: 6, home: "England", away: "Croatia", homeScore: null, awayScore: null, status: "Upcoming", date: "18 Jun 2026", bets: []}
+        ];
+
+        let matches = [];
+
+        // Utilities
+        const formatIDR = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
+
+        // App Initialization
+        function init() {
+            const stored = localStorage.getItem('wc2026_bets');
+            if (stored) {
+                matches = JSON.parse(stored);
+            } else {
+                matches = JSON.parse(JSON.stringify(defaultMatches));
+                saveData();
+            }
+            renderApp();
+        }
+
+        function saveData() {
+            localStorage.setItem('wc2026_bets', JSON.stringify(matches));
+        }
+
+        function resetData() {
+            if(confirm("Are you sure you want to reset the demo? All new bets will be lost.")){
+                localStorage.removeItem('wc2026_bets');
+                init();
+            }
+        }
+
+        function renderApp() {
+            renderMatches();
+            renderLeaderboard();
+        }
+
+        // Render Functions
+        function renderMatches() {
+            const container = document.getElementById('matches-container');
+            container.innerHTML = '';
+            
+            matches.forEach(m => {
+                const isFinished = m.status === 'Finished';
+                const scoreHTML = isFinished 
+                    ? `<span class="font-bold text-xl text-slate-800 bg-slate-100 px-3 py-1 rounded-md">${m.homeScore} - ${m.awayScore}</span>` 
+                    : `<span class="text-xs bg-blue-100 text-blue-800 py-1 px-2 rounded-full font-bold tracking-wide uppercase">Upcoming</span>`;
+                
+                let betsHTML = '';
+                if (m.bets.length > 0) {
+                    betsHTML = `<div class="mt-4 border-t pt-3">
+                        <ul class="space-y-2">
+                            ${m.bets.map(b => `
+                                <li class="text-sm bg-slate-50 p-2 rounded-lg flex justify-between items-center border border-slate-100">
+                                    <div class="flex flex-col">
+                                        <span><b class="text-slate-800">${b.p1}</b> <span class="text-slate-400 text-xs">(${b.p1Choice})</span></span>
+                                        <span class="text-slate-400 text-xs italic">vs</span>
+                                        <span><b class="text-slate-800">${b.p2}</b> <span class="text-slate-400 text-xs">(${b.p2Choice})</span></span>
+                                    </div>
+                                    <span class="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">${formatIDR(b.amount)}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>`;
+                }
+
+                const actionsHTML = isFinished 
+                    ? `<button disabled class="mt-4 w-full bg-slate-100 text-slate-400 py-2 rounded-lg text-sm font-bold cursor-not-allowed uppercase tracking-wider">Match Ended</button>`
+                    : `<div class="mt-4 flex gap-2">
+                        <button onclick="openBetModal(${m.id})" class="flex-1 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 py-2 rounded-lg text-sm font-bold transition">Add Bet</button>
+                        <button onclick="openResultModal(${m.id})" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-bold transition">Set Result</button>
+                       </div>`;
+
+                const card = `
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-xs text-slate-400 font-bold tracking-wider uppercase">${m.date}</span>
+                                ${scoreHTML}
+                            </div>
+                            <div class="flex justify-between items-center text-lg font-bold mb-2">
+                                <span class="w-2/5 text-right">${m.home}</span>
+                                <span class="w-1/5 text-center text-slate-300 text-sm">vs</span>
+                                <span class="w-2/5 text-left">${m.away}</span>
+                            </div>
+                            ${betsHTML}
+                        </div>
+                        ${actionsHTML}
+                    </div>
+                `;
+                container.innerHTML += card;
+            });
+        }
+
+        function renderLeaderboard() {
+            const tbody = document.getElementById('leaderboard-body');
+            tbody.innerHTML = '';
+
+            // Calculate stats
+            let stats = {};
+            participants.forEach(p => stats[p] = { name: p, net: 0 });
+
+            matches.forEach(m => {
+                if (m.status === 'Finished' && m.homeScore !== null && m.awayScore !== null) {
+                    let winner = null;
+                    if (m.homeScore > m.awayScore) winner = m.home;
+                    else if (m.awayScore > m.homeScore) winner = m.away;
+                    
+                    // If winner === null, it's a draw (push), nobody wins or loses.
+                    m.bets.forEach(b => {
+                        if (winner) { 
+                            if (b.p1Choice === winner) {
+                                stats[b.p1].net += b.amount;
+                                stats[b.p2].net -= b.amount;
+                            } else if (b.p2Choice === winner) {
+                                stats[b.p2].net += b.amount;
+                                stats[b.p1].net -= b.amount;
+                            }
+                        }
+                    });
+                }
+            });
+
+            // Sort by Net Balance descending
+            const sortedStats = Object.values(stats).sort((a, b) => b.net - a.net);
+
+            sortedStats.forEach((s, index) => {
+                const colorClass = s.net > 0 ? 'text-emerald-600' : (s.net < 0 ? 'text-red-500' : 'text-slate-500');
+                const medal = index === 0 ? '🥇 ' : index === 1 ? '🥈 ' : index === 2 ? '🥉 ' : '';
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-4 font-bold text-slate-700">${medal}${s.name}</td>
+                        <td class="p-4 text-right font-bold ${colorClass}">${formatIDR(s.net)}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Modals Logic
+        function populatePlayerDropdowns() {
+            const html = `<option value="">-- Select Player --</option>` + 
+                         participants.map(p => `<option value="${p}">${p}</option>`).join('');
+            document.getElementById('player-home').innerHTML = html;
+            document.getElementById('player-away').innerHTML = html;
+        }
+
+        function openBetModal(matchId) {
+            const match = matches.find(m => m.id === matchId);
+            document.getElementById('bet-match-id').value = match.id;
+            document.getElementById('label-team-home').innerText = `Who picks ${match.home}?`;
+            document.getElementById('label-team-away').innerText = `Who picks ${match.away}?`;
+            document.getElementById('bet-amount').value = '';
+            populatePlayerDropdowns();
+            document.getElementById('bet-modal').classList.remove('hidden');
+        }
+
+        function submitBet(e) {
+            e.preventDefault();
+            const matchId = parseInt(document.getElementById('bet-match-id').value);
+            const p1 = document.getElementById('player-home').value;
+            const p2 = document.getElementById('player-away').value;
+            const amount = parseInt(document.getElementById('bet-amount').value);
+
+            if (p1 === p2) {
+                alert("A player cannot bet against themselves!");
+                return;
+            }
+
+            const match = matches.find(m => m.id === matchId);
+            match.bets.push({
+                id: Date.now(),
+                p1: p1,
+                p1Choice: match.home,
+                p2: p2,
+                p2Choice: match.away,
+                amount: amount
+            });
+
+            saveData();
+            renderApp();
+            closeModal('bet-modal');
+        }
+
+        function openResultModal(matchId) {
+            const match = matches.find(m => m.id === matchId);
+            document.getElementById('result-match-id').value = match.id;
+            document.getElementById('score-label-home').innerText = match.home;
+            document.getElementById('score-label-away').innerText = match.away;
+            document.getElementById('score-home').value = '';
+            document.getElementById('score-away').value = '';
+            document.getElementById('result-modal').classList.remove('hidden');
+        }
+
+        function submitResult(e) {
+            e.preventDefault();
+            const matchId = parseInt(document.getElementById('result-match-id').value);
+            const scoreHome = parseInt(document.getElementById('score-home').value);
+            const scoreAway = parseInt(document.getElementById('score-away').value);
+
+            const match = matches.find(m => m.id === matchId);
+            match.homeScore = scoreHome;
+            match.awayScore = scoreAway;
+            match.status = 'Finished';
+
+            saveData();
+            renderApp();
+            closeModal('result-modal');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // Start App
+        init();
+    </script>
+</body>
+</html>
