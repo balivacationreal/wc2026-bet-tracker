@@ -11,7 +11,7 @@
     <div class="max-w-6xl mx-auto">
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <div class="flex items-center gap-4">
-                <img src="https://www.fifplay.com/img/public/fifa-world-cup-2026-logo.png" alt="WC 2026 Logo" class="h-16 w-auto object-contain">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c8/2026_FIFA_World_Cup_logo.svg" alt="WC 2026 Logo" class="h-16 w-auto object-contain">
                 <div>
                     <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Bet Tracker</h1>
                     <p class="text-slate-500 mt-1">Manage 1-on-1 bets in IDR with Handicaps</p>
@@ -185,28 +185,31 @@
 
         let matches = [];
 
-        // Utilities
         const formatIDR = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
 
-        // App Initialization
+        // App Initialization with Error Handling (Self-Healing)
         function init() {
             const storedAdmin = sessionStorage.getItem('wc2026_admin');
             if (storedAdmin === 'true') isAdmin = true;
 
-            const stored = localStorage.getItem('wc2026_bets_stable');
-            
-            // Safe parsing with fallback to defaults if empty or corrupted
-            if (stored) {
-                matches = JSON.parse(stored);
-                if (!matches || matches.length === 0) {
+            try {
+                const stored = localStorage.getItem('wc2026_bets_stable');
+                if (stored) {
+                    matches = JSON.parse(stored);
+                    
+                    // Verify the data structure is intact, otherwise force a reset
+                    if (!Array.isArray(matches) || matches.length === 0 || !matches[0].hasOwnProperty('bets')) {
+                        throw new Error("Corrupted or outdated data structure detected.");
+                    }
+                } else {
                     matches = JSON.parse(JSON.stringify(defaultMatches));
-                    saveData();
                 }
-            } else {
+            } catch (error) {
+                console.warn("Recovering from corrupted local data. Resetting to defaults...");
                 matches = JSON.parse(JSON.stringify(defaultMatches));
-                saveData();
             }
             
+            saveData();
             updateUIState();
             renderApp();
         }
@@ -224,7 +227,6 @@
             }
         }
 
-        // Authentication Logic
         function toggleAuth() {
             if (isAdmin) {
                 isAdmin = false;
@@ -282,7 +284,6 @@
             renderLeaderboardAndDebts();
         }
 
-        // Render Functions
         function renderMatches() {
             const container = document.getElementById('matches-container');
             container.innerHTML = '';
@@ -368,7 +369,6 @@
             let stats = {};
             let debts = {}; 
             
-            // Ensure ALL participants are listed, even if they have 0 bets
             participants.forEach(p => {
                 stats[p] = { name: p, net: 0 };
                 debts[p] = {};
@@ -407,4 +407,200 @@
             const sortedStats = Object.values(stats).sort((a, b) => b.net - a.net);
 
             sortedStats.forEach((s, index) => {
-                const colorClass = s.net > 0 ? 'text-emerald-600' : (s.net < 0 ? 'text-red-500' : 'text-slate-50
+                const colorClass = s.net > 0 ? 'text-emerald-600' : (s.net < 0 ? 'text-red-500' : 'text-slate-500');
+                let medal = '';
+                if (s.net > 0) {
+                    medal = index === 0 ? '🥇 ' : index === 1 ? '🥈 ' : index === 2 ? '🥉 ' : '';
+                }
+                
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-4 font-bold text-slate-700">${medal}${s.name}</td>
+                        <td class="p-4 text-right font-bold ${colorClass}">${formatIDR(s.net)}</td>
+                    </tr>
+                `;
+            });
+
+            let hasDebts = false;
+            participants.forEach(debtor => {
+                for (const creditor in debts[debtor]) {
+                    if (debts[debtor][creditor] > 0) {
+                        hasDebts = true;
+                        debtsList.innerHTML += `
+                            <li class="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+                                <span><span class="font-bold text-red-500">${debtor}</span> owes <span class="font-bold text-emerald-600">${creditor}</span></span>
+                                <span class="font-bold text-slate-700">${formatIDR(debts[debtor][creditor])}</span>
+                            </li>
+                        `;
+                    }
+                }
+            });
+
+            if (!hasDebts) {
+                debtsList.innerHTML = `<li class="text-slate-400 italic text-center py-2">No active debts. All squared up!</li>`;
+            }
+        }
+
+        function populatePlayerDropdowns() {
+            const html = `<option value="">-- Select Player --</option>` + 
+                         participants.map(p => `<option value="${p}">${p}</option>`).join('');
+            document.getElementById('player-home').innerHTML = html;
+            document.getElementById('player-away').innerHTML = html;
+        }
+
+        function openBetModal(matchId) {
+            if (!isAdmin) return;
+            const match = matches.find(m => m.id === matchId);
+            document.getElementById('bet-match-id').value = match.id;
+            document.getElementById('bet-id').value = ''; 
+            document.getElementById('bet-modal-title').innerText = "Add New Bet";
+            document.getElementById('delete-bet-btn').classList.add('hidden');
+            
+            document.getElementById('label-team-home').innerText = `Who picks ${match.home}?`;
+            document.getElementById('label-team-away').innerText = `Who picks ${match.away}?`;
+            
+            const hcSelect = document.getElementById('bet-handicap-team');
+            hcSelect.innerHTML = `
+                <option value="">No Handicap</option>
+                <option value="${match.home}">${match.home}</option>
+                <option value="${match.away}">${match.away}</option>
+            `;
+            
+            document.getElementById('bet-amount').value = '';
+            document.getElementById('bet-handicap-value').value = 0;
+            
+            populatePlayerDropdowns();
+            document.getElementById('bet-modal').classList.remove('hidden');
+        }
+
+        function openEditBetModal(matchId, betId) {
+            if (!isAdmin) return;
+            const match = matches.find(m => m.id === matchId);
+            const bet = match.bets.find(b => b.id === betId);
+            
+            document.getElementById('bet-match-id').value = match.id;
+            document.getElementById('bet-id').value = bet.id;
+            document.getElementById('bet-modal-title').innerText = "Edit Existing Bet";
+            document.getElementById('delete-bet-btn').classList.remove('hidden');
+            
+            document.getElementById('label-team-home').innerText = `Who picks ${match.home}?`;
+            document.getElementById('label-team-away').innerText = `Who picks ${match.away}?`;
+            
+            const hcSelect = document.getElementById('bet-handicap-team');
+            hcSelect.innerHTML = `
+                <option value="">No Handicap</option>
+                <option value="${match.home}">${match.home}</option>
+                <option value="${match.away}">${match.away}</option>
+            `;
+            
+            populatePlayerDropdowns();
+            
+            document.getElementById('player-home').value = bet.p1;
+            document.getElementById('player-away').value = bet.p2;
+            document.getElementById('bet-handicap-team').value = bet.handicapTeam;
+            document.getElementById('bet-handicap-value').value = bet.handicapValue;
+            document.getElementById('bet-amount').value = bet.amount;
+            
+            document.getElementById('bet-modal').classList.remove('hidden');
+        }
+
+        function submitBet(e) {
+            e.preventDefault();
+            if (!isAdmin) return;
+            
+            const matchId = parseInt(document.getElementById('bet-match-id').value);
+            const betId = document.getElementById('bet-id').value;
+            const p1 = document.getElementById('player-home').value;
+            const p2 = document.getElementById('player-away').value;
+            const amount = parseInt(document.getElementById('bet-amount').value);
+            const handicapTeam = document.getElementById('bet-handicap-team').value;
+            const handicapValue = parseFloat(document.getElementById('bet-handicap-value').value);
+
+            if (p1 === p2) {
+                alert("A player cannot bet against themselves!");
+                return;
+            }
+
+            const match = matches.find(m => m.id === matchId);
+
+            if (betId === '') {
+                match.bets.push({
+                    id: Date.now(),
+                    p1: p1,
+                    p1Choice: match.home,
+                    p2: p2,
+                    p2Choice: match.away,
+                    amount: amount,
+                    handicapTeam: handicapTeam,
+                    handicapValue: handicapValue || 0
+                });
+            } else {
+                const bet = match.bets.find(b => b.id === parseInt(betId));
+                bet.p1 = p1;
+                bet.p2 = p2;
+                bet.amount = amount;
+                bet.handicapTeam = handicapTeam;
+                bet.handicapValue = handicapValue || 0;
+            }
+
+            saveData();
+            renderApp();
+            closeModal('bet-modal');
+        }
+
+        function deleteBet() {
+            if (!isAdmin) return;
+            if (confirm("Are you sure you want to permanently delete this bet?")) {
+                const matchId = parseInt(document.getElementById('bet-match-id').value);
+                const betId = parseInt(document.getElementById('bet-id').value);
+                
+                const match = matches.find(m => m.id === matchId);
+                match.bets = match.bets.filter(b => b.id !== betId);
+                
+                saveData();
+                renderApp();
+                closeModal('bet-modal');
+            }
+        }
+
+        function openResultModal(matchId) {
+            if (!isAdmin) return;
+            const match = matches.find(m => m.id === matchId);
+            document.getElementById('result-match-id').value = match.id;
+            document.getElementById('score-label-home').innerText = match.home;
+            document.getElementById('score-label-away').innerText = match.away;
+            document.getElementById('score-home').value = match.homeScore !== null ? match.homeScore : '';
+            document.getElementById('score-away').value = match.awayScore !== null ? match.awayScore : '';
+            document.getElementById('result-modal').classList.remove('hidden');
+        }
+
+        function submitResult(e) {
+            e.preventDefault();
+            if (!isAdmin) return;
+            const matchId = parseInt(document.getElementById('result-match-id').value);
+            const scoreHome = parseInt(document.getElementById('score-home').value);
+            const scoreAway = parseInt(document.getElementById('score-away').value);
+
+            const match = matches.find(m => m.id === matchId);
+            match.homeScore = scoreHome;
+            match.awayScore = scoreAway;
+            match.status = 'Finished';
+
+            saveData();
+            renderApp();
+            closeModal('result-modal');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+            if (id === 'login-modal') {
+                document.getElementById('admin-password-input').value = '';
+                document.getElementById('login-error').classList.add('hidden');
+            }
+        }
+
+        // Start App
+        init();
+    </script>
+</body>
+</html>
