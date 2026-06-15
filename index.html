@@ -173,7 +173,6 @@
 
         const participants = ["Ngurah", "Wipradnyana", "Wage", "Suta", "Putu Ardi", "Made Mudiana", "Darsika", "Sony"];
         
-        // Updated to use ISO 3166-1 alpha-2 codes for FlagCDN integration
         const flags = {
             "Mexico": "mx", "South Africa": "za", "USA": "us", "Paraguay": "py",
             "Brazil": "br", "Morocco": "ma", "Germany": "de", "Curaçao": "cw",
@@ -189,26 +188,25 @@
             { id: 1, home: "Mexico", away: "South Africa", homeScore: 2, awayScore: 0, status: "Finished", date: "11 Jun 2026", bets: [
                 { id: 101, p1: "Ngurah", p1Choice: "Mexico", p2: "Sony", p2Choice: "South Africa", amount: 100000, handicapTeam: "", handicapValue: 0 }
             ]},
-            { id: 2, home: "USA", away: "Paraguay", homeScore: 4, awayScore: 1, status: "Finished", date: "12 Jun 2026", bets: [
+            { id: 2, home: "USA", away: "Paraguay", homeScore: 4, awayScore: 1, status: "Finished", date: "11 Jun 2026", bets: [
                 { id: 102, p1: "Wage", p1Choice: "USA", p2: "Suta", p2Choice: "Paraguay", amount: 50000, handicapTeam: "", handicapValue: 0 },
                 { id: 103, p1: "Putu Ardi", p1Choice: "USA", p2: "Made Mudiana", p2Choice: "Paraguay", amount: 150000, handicapTeam: "", handicapValue: 0 }
             ]},
-            { id: 3, home: "Brazil", away: "Morocco", homeScore: 1, awayScore: 1, status: "Finished", date: "13 Jun 2026", bets: []},
-            { id: 4, home: "Germany", away: "Curaçao", homeScore: 7, awayScore: 1, status: "Finished", date: "14 Jun 2026", bets: []},
-            { id: 5, home: "Netherlands", away: "Japan", homeScore: 2, awayScore: 2, status: "Finished", date: "14 Jun 2026", bets: []},
-            { id: 6, home: "Sweden", away: "Tunisia", homeScore: 5, awayScore: 1, status: "Finished", date: "15 Jun 2026", bets: []},
-            { id: 7, home: "Spain", away: "Cape Verde", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: [
+            { id: 3, home: "Brazil", away: "Morocco", homeScore: 1, awayScore: 1, status: "Finished", date: "12 Jun 2026", bets: []},
+            { id: 4, home: "Germany", away: "Curaçao", homeScore: 7, awayScore: 1, status: "Finished", date: "12 Jun 2026", bets: []},
+            { id: 5, home: "Netherlands", away: "Japan", homeScore: 2, awayScore: 2, status: "Finished", date: "13 Jun 2026", bets: []},
+            { id: 6, home: "Ivory Coast", away: "Ecuador", homeScore: 1, awayScore: 0, status: "Finished", date: "13 Jun 2026", bets: []},
+            { id: 7, home: "Sweden", away: "Tunisia", homeScore: 5, awayScore: 1, status: "Finished", date: "14 Jun 2026", bets: []},
+            { id: 8, home: "Australia", away: "Turkey", homeScore: 0, awayScore: 2, status: "Finished", date: "14 Jun 2026", bets: []},
+            { id: 9, home: "Spain", away: "Cape Verde", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: [
                 { id: 104, p1: "Darsika", p1Choice: "Spain", p2: "Wipradnyana", p2Choice: "Cape Verde", amount: 200000, handicapTeam: "Cape Verde", handicapValue: 2.5 }
             ]},
-            { id: 8, home: "Belgium", away: "Egypt", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
-            { id: 9, home: "Saudi Arabia", away: "Uruguay", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
-            { id: 10, home: "Iran", away: "New Zealand", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
-            { id: 11, home: "France", away: "Senegal", homeScore: null, awayScore: null, status: "Upcoming", date: "16 Jun 2026", bets: []},
-            { id: 12, home: "Argentina", away: "Algeria", homeScore: null, awayScore: null, status: "Upcoming", date: "16 Jun 2026", bets: []},
-            { id: 13, home: "England", away: "Croatia", homeScore: null, awayScore: null, status: "Upcoming", date: "17 Jun 2026", bets: []},
-            // Added Missing Games here
-            { id: 14, home: "Ivory Coast", away: "Ecuador", homeScore: null, awayScore: null, status: "Finished", date: "13 Jun 2026", bets: []},
-            { id: 15, home: "Australia", away: "Turkey", homeScore: null, awayScore: null, status: "Finished", date: "14 Jun 2026", bets: []}
+            { id: 10, home: "Belgium", away: "Egypt", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
+            { id: 11, home: "Saudi Arabia", away: "Uruguay", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
+            { id: 12, home: "Iran", away: "New Zealand", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
+            { id: 13, home: "France", away: "Senegal", homeScore: null, awayScore: null, status: "Upcoming", date: "16 Jun 2026", bets: []},
+            { id: 14, home: "Argentina", away: "Algeria", homeScore: null, awayScore: null, status: "Upcoming", date: "16 Jun 2026", bets: []},
+            { id: 15, home: "England", away: "Croatia", homeScore: null, awayScore: null, status: "Upcoming", date: "17 Jun 2026", bets: []}
         ];
 
         let matches = [];
@@ -344,11 +342,10 @@
                     ? `<span class="font-bold text-xl text-slate-800 bg-slate-100 px-3 py-1 rounded-md">${m.homeScore !== null ? m.homeScore : '-'} - ${m.awayScore !== null ? m.awayScore : '-'}</span>` 
                     : `<span class="text-xs bg-blue-100 text-blue-800 py-1 px-2 rounded-full font-bold tracking-wide uppercase">Upcoming</span>`;
                 
-                // Constructing Flag Images via CDN
                 const homeFlagCode = flags[m.home];
                 const awayFlagCode = flags[m.away];
-                const homeFlagHTML = homeFlagCode ? `<img src="https://flagcdn.com/w40/${homeFlagCode}.png" alt="${m.home} flag" class="inline-block w-6 h-auto mr-2 rounded-sm shadow-sm">` : "🏳️ ";
-                const awayFlagHTML = awayFlagCode ? `<img src="https://flagcdn.com/w40/${awayFlagCode}.png" alt="${m.away} flag" class="inline-block w-6 h-auto ml-2 rounded-sm shadow-sm">` : " 🏳️";
+                const homeFlagHTML = homeFlagCode ? `<img src="https://flagcdn.com/w40/${homeFlagCode}.png" alt="${m.home} flag" class="inline-block w-6 h-auto mr-2 rounded-sm shadow-sm">` : "";
+                const awayFlagHTML = awayFlagCode ? `<img src="https://flagcdn.com/w40/${awayFlagCode}.png" alt="${m.away} flag" class="inline-block w-6 h-auto ml-2 rounded-sm shadow-sm">` : "";
 
                 let betsHTML = '';
                 if (m.bets && m.bets.length > 0) {
