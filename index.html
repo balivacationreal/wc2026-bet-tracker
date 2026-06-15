@@ -19,6 +19,9 @@
             </div>
             
             <div class="mt-4 md:mt-0 flex flex-col md:flex-row gap-3 items-center">
+                <div id="loading-indicator" class="hidden text-sm font-bold text-blue-600 animate-pulse mr-4">
+                    Syncing with Cloud...
+                </div>
                 <button id="btn-reset" onclick="resetData()" class="hidden bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 px-4 py-2 rounded-lg font-medium transition text-sm">
                     Reset Demo Data
                 </button>
@@ -161,13 +164,26 @@
     </div>
 
     <script>
-        // Data Structure & Security
+        // --- API CONFIGURATION ---
+        // These are unique placeholder tokens that Netlify will replace during the build process
+        const BIN_ID = '###INJECTED_BIN_ID###'; 
+        const API_KEY = '###INJECTED_API_KEY###';
+        
         const ADMIN_PASSWORD = "admin2026";
         let isAdmin = false; 
 
         const participants = ["Ngurah", "Wipradnyana", "Wage", "Suta", "Putu Ardi", "Made Mudiana", "Darsika", "Sony"];
         
-        // Restored the accurate mock data to populate the Leaderboard
+        const flags = {
+            "Mexico": "🇲🇽", "South Africa": "🇿🇦", "USA": "🇺🇸", "Paraguay": "🇵🇾",
+            "Brazil": "🇧🇷", "Morocco": "🇲🇦", "Germany": "🇩🇪", "Curaçao": "🇨🇼",
+            "Netherlands": "🇳🇱", "Japan": "🇯🇵", "Sweden": "🇸🇪", "Tunisia": "🇹🇳",
+            "Spain": "🇪🇸", "Cape Verde": "🇨🇻", "Belgium": "🇧🇪", "Egypt": "🇪🇬",
+            "Saudi Arabia": "🇸🇦", "Uruguay": "🇺🇾", "Iran": "🇮🇷", "New Zealand": "🇳🇿",
+            "France": "🇫🇷", "Senegal": "🇸🇳", "Argentina": "🇦🇷", "Algeria": "🇩🇿",
+            "England": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Croatia": "🇭🇷"
+        };
+
         const defaultMatches = [
             { id: 1, home: "Mexico", away: "South Africa", homeScore: 2, awayScore: 0, status: "Finished", date: "11 Jun 2026", bets: [
                 { id: 101, p1: "Ngurah", p1Choice: "Mexico", p2: "Sony", p2Choice: "South Africa", amount: 100000, handicapTeam: "", handicapValue: 0 }
@@ -195,41 +211,65 @@
 
         const formatIDR = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
 
-        function init() {
+        function showLoading(show) {
+            const loader = document.getElementById('loading-indicator');
+            if(show) loader.classList.remove('hidden');
+            else loader.classList.add('hidden');
+        }
+
+        async function init() {
             const storedAdmin = sessionStorage.getItem('wc2026_admin');
             if (storedAdmin === 'true') isAdmin = true;
 
+            showLoading(true);
             try {
-                // Changed the local storage key to force a clean slate from your previous corrupted version
-                const stored = localStorage.getItem('wc2026_bets_showcase');
-                if (stored) {
-                    matches = JSON.parse(stored);
-                    if (!Array.isArray(matches) || matches.length === 0 || !matches[0].hasOwnProperty('bets')) {
-                        throw new Error("Corrupted or outdated data structure detected.");
-                    }
+                const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                    headers: { 'X-Access-Key': API_KEY }
+                });
+                
+                const data = await response.json();
+                
+                if (data.record && data.record.matches && data.record.matches.length > 0) {
+                    matches = data.record.matches;
                 } else {
                     matches = JSON.parse(JSON.stringify(defaultMatches));
+                    await saveData(); 
                 }
             } catch (error) {
-                console.warn("Recovering from corrupted local data. Resetting to defaults...");
-                matches = JSON.parse(JSON.stringify(defaultMatches));
+                console.error("Cloud fetch failed, using defaults. Did you add your BIN_ID?", error);
+                document.getElementById('matches-container').innerHTML = `<p class="col-span-2 text-red-500 font-bold p-4 bg-red-50 rounded-lg border border-red-200">Database Connection Error. Please verify your JSONBin.io ID and Access Key.</p>`;
+                showLoading(false);
+                return;
             }
             
-            saveData();
+            showLoading(false);
             updateUIState();
             renderApp();
         }
 
-        function saveData() {
-            localStorage.setItem('wc2026_bets_showcase', JSON.stringify(matches));
+        async function saveData() {
+            showLoading(true);
+            try {
+                await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Access-Key': API_KEY
+                    },
+                    body: JSON.stringify({ matches: matches })
+                });
+            } catch (error) {
+                alert("Failed to save data to the cloud. Check your connection.");
+            }
+            showLoading(false);
+            renderApp();
         }
 
-        function resetData() {
+        async function resetData() {
             if (!isAdmin) return;
-            if(confirm("Are you sure you want to reset all data back to the demo showcase?")){
+            if(confirm("Are you sure you want to reset all live data? This affects everyone.")){
                 matches = JSON.parse(JSON.stringify(defaultMatches));
-                saveData();
-                renderApp();
+                await saveData();
             }
         }
 
@@ -300,6 +340,9 @@
                     ? `<span class="font-bold text-xl text-slate-800 bg-slate-100 px-3 py-1 rounded-md">${m.homeScore} - ${m.awayScore}</span>` 
                     : `<span class="text-xs bg-blue-100 text-blue-800 py-1 px-2 rounded-full font-bold tracking-wide uppercase">Upcoming</span>`;
                 
+                const homeFlag = flags[m.home] || "🏳️";
+                const awayFlag = flags[m.away] || "🏳️";
+
                 let betsHTML = '';
                 if (m.bets && m.bets.length > 0) {
                     betsHTML = `<div class="mt-4 border-t pt-3">
@@ -353,9 +396,9 @@
                                 ${scoreHTML}
                             </div>
                             <div class="flex justify-between items-center text-lg font-bold mb-2">
-                                <span class="w-2/5 text-right">${m.home}</span>
+                                <span class="w-2/5 text-right"><span class="text-2xl align-middle mr-2">${homeFlag}</span>${m.home}</span>
                                 <span class="w-1/5 text-center text-slate-300 text-sm">vs</span>
-                                <span class="w-2/5 text-left">${m.away}</span>
+                                <span class="w-2/5 text-left">${m.away}<span class="text-2xl align-middle ml-2">${awayFlag}</span></span>
                             </div>
                             ${betsHTML}
                         </div>
@@ -510,7 +553,7 @@
             document.getElementById('bet-modal').classList.remove('hidden');
         }
 
-        function submitBet(e) {
+        async function submitBet(e) {
             e.preventDefault();
             if (!isAdmin) return;
             
@@ -549,12 +592,11 @@
                 bet.handicapValue = handicapValue || 0;
             }
 
-            saveData();
-            renderApp();
             closeModal('bet-modal');
+            await saveData();
         }
 
-        function deleteBet() {
+        async function deleteBet() {
             if (!isAdmin) return;
             if (confirm("Are you sure you want to permanently delete this bet?")) {
                 const matchId = parseInt(document.getElementById('bet-match-id').value);
@@ -563,9 +605,8 @@
                 const match = matches.find(m => m.id === matchId);
                 match.bets = match.bets.filter(b => b.id !== betId);
                 
-                saveData();
-                renderApp();
                 closeModal('bet-modal');
+                await saveData();
             }
         }
 
@@ -580,7 +621,7 @@
             document.getElementById('result-modal').classList.remove('hidden');
         }
 
-        function submitResult(e) {
+        async function submitResult(e) {
             e.preventDefault();
             if (!isAdmin) return;
             const matchId = parseInt(document.getElementById('result-match-id').value);
@@ -592,9 +633,8 @@
             match.awayScore = scoreAway;
             match.status = 'Finished';
 
-            saveData();
-            renderApp();
             closeModal('result-modal');
+            await saveData();
         }
 
         function closeModal(id) {
