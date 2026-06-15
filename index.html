@@ -165,7 +165,6 @@
 
     <script>
         // --- API CONFIGURATION ---
-        // These are unique placeholder tokens that Netlify will replace during the build process
         const BIN_ID = '###INJECTED_BIN_ID###'; 
         const API_KEY = '###INJECTED_API_KEY###';
         
@@ -174,14 +173,16 @@
 
         const participants = ["Ngurah", "Wipradnyana", "Wage", "Suta", "Putu Ardi", "Made Mudiana", "Darsika", "Sony"];
         
+        // Updated to use ISO 3166-1 alpha-2 codes for FlagCDN integration
         const flags = {
-            "Mexico": "🇲🇽", "South Africa": "🇿🇦", "USA": "🇺🇸", "Paraguay": "🇵🇾",
-            "Brazil": "🇧🇷", "Morocco": "🇲🇦", "Germany": "🇩🇪", "Curaçao": "🇨🇼",
-            "Netherlands": "🇳🇱", "Japan": "🇯🇵", "Sweden": "🇸🇪", "Tunisia": "🇹🇳",
-            "Spain": "🇪🇸", "Cape Verde": "🇨🇻", "Belgium": "🇧🇪", "Egypt": "🇪🇬",
-            "Saudi Arabia": "🇸🇦", "Uruguay": "🇺🇾", "Iran": "🇮🇷", "New Zealand": "🇳🇿",
-            "France": "🇫🇷", "Senegal": "🇸🇳", "Argentina": "🇦🇷", "Algeria": "🇩🇿",
-            "England": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Croatia": "🇭🇷"
+            "Mexico": "mx", "South Africa": "za", "USA": "us", "Paraguay": "py",
+            "Brazil": "br", "Morocco": "ma", "Germany": "de", "Curaçao": "cw",
+            "Netherlands": "nl", "Japan": "jp", "Sweden": "se", "Tunisia": "tn",
+            "Spain": "es", "Cape Verde": "cv", "Belgium": "be", "Egypt": "eg",
+            "Saudi Arabia": "sa", "Uruguay": "uy", "Iran": "ir", "New Zealand": "nz",
+            "France": "fr", "Senegal": "sn", "Argentina": "ar", "Algeria": "dz",
+            "England": "gb-eng", "Croatia": "hr",
+            "Ivory Coast": "ci", "Ecuador": "ec", "Australia": "au", "Turkey": "tr"
         };
 
         const defaultMatches = [
@@ -204,7 +205,10 @@
             { id: 10, home: "Iran", away: "New Zealand", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
             { id: 11, home: "France", away: "Senegal", homeScore: null, awayScore: null, status: "Upcoming", date: "16 Jun 2026", bets: []},
             { id: 12, home: "Argentina", away: "Algeria", homeScore: null, awayScore: null, status: "Upcoming", date: "16 Jun 2026", bets: []},
-            { id: 13, home: "England", away: "Croatia", homeScore: null, awayScore: null, status: "Upcoming", date: "17 Jun 2026", bets: []}
+            { id: 13, home: "England", away: "Croatia", homeScore: null, awayScore: null, status: "Upcoming", date: "17 Jun 2026", bets: []},
+            // Added Missing Games here
+            { id: 14, home: "Ivory Coast", away: "Ecuador", homeScore: null, awayScore: null, status: "Finished", date: "13 Jun 2026", bets: []},
+            { id: 15, home: "Australia", away: "Turkey", homeScore: null, awayScore: null, status: "Finished", date: "14 Jun 2026", bets: []}
         ];
 
         let matches = [];
@@ -337,11 +341,14 @@
             matches.forEach(m => {
                 const isFinished = m.status === 'Finished';
                 const scoreHTML = isFinished 
-                    ? `<span class="font-bold text-xl text-slate-800 bg-slate-100 px-3 py-1 rounded-md">${m.homeScore} - ${m.awayScore}</span>` 
+                    ? `<span class="font-bold text-xl text-slate-800 bg-slate-100 px-3 py-1 rounded-md">${m.homeScore !== null ? m.homeScore : '-'} - ${m.awayScore !== null ? m.awayScore : '-'}</span>` 
                     : `<span class="text-xs bg-blue-100 text-blue-800 py-1 px-2 rounded-full font-bold tracking-wide uppercase">Upcoming</span>`;
                 
-                const homeFlag = flags[m.home] || "🏳️";
-                const awayFlag = flags[m.away] || "🏳️";
+                // Constructing Flag Images via CDN
+                const homeFlagCode = flags[m.home];
+                const awayFlagCode = flags[m.away];
+                const homeFlagHTML = homeFlagCode ? `<img src="https://flagcdn.com/w40/${homeFlagCode}.png" alt="${m.home} flag" class="inline-block w-6 h-auto mr-2 rounded-sm shadow-sm">` : "🏳️ ";
+                const awayFlagHTML = awayFlagCode ? `<img src="https://flagcdn.com/w40/${awayFlagCode}.png" alt="${m.away} flag" class="inline-block w-6 h-auto ml-2 rounded-sm shadow-sm">` : " 🏳️";
 
                 let betsHTML = '';
                 if (m.bets && m.bets.length > 0) {
@@ -396,9 +403,9 @@
                                 ${scoreHTML}
                             </div>
                             <div class="flex justify-between items-center text-lg font-bold mb-2">
-                                <span class="w-2/5 text-right"><span class="text-2xl align-middle mr-2">${homeFlag}</span>${m.home}</span>
+                                <span class="w-2/5 text-right flex justify-end items-center">${homeFlagHTML}${m.home}</span>
                                 <span class="w-1/5 text-center text-slate-300 text-sm">vs</span>
-                                <span class="w-2/5 text-left">${m.away}<span class="text-2xl align-middle ml-2">${awayFlag}</span></span>
+                                <span class="w-2/5 text-left flex justify-start items-center">${m.away}${awayFlagHTML}</span>
                             </div>
                             ${betsHTML}
                         </div>
