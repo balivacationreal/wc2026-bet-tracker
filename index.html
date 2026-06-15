@@ -14,7 +14,7 @@
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <div>
                 <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">🏆 WC 2026 Bet Tracker</h1>
-                <p class="text-slate-500 mt-1">Manage 1-on-1 bets in IDR</p>
+                <p class="text-slate-500 mt-1">Manage 1-on-1 bets in IDR with Handicaps</p>
             </div>
             <button onclick="resetData()" class="mt-4 md:mt-0 bg-red-100 text-red-600 hover:bg-red-200 px-4 py-2 rounded-lg font-medium transition text-sm">
                 Reset Demo Data
@@ -30,7 +30,7 @@
                 </div>
             </div>
 
-            <!-- Right Column: Leaderboard -->
+            <!-- Right Column: Leaderboard & Debts -->
             <div class="space-y-6">
                 <h2 class="text-xl font-bold text-slate-800 border-b pb-2">Leaderboard</h2>
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -46,14 +46,21 @@
                         </tbody>
                     </table>
                 </div>
+
+                <h2 class="text-xl font-bold text-slate-800 border-b pb-2 mt-8">Settlements (Debts)</h2>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                    <ul id="debts-list" class="space-y-3 text-sm">
+                        <!-- Debts injected via JS -->
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Modal: Add Bet -->
     <div id="bet-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <div class="bg-slate-800 p-4 text-white flex justify-between items-center">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div class="bg-slate-800 p-4 text-white flex justify-between items-center sticky top-0">
                 <h3 class="font-bold text-lg">Add New Bet</h3>
                 <button onclick="closeModal('bet-modal')" class="text-slate-300 hover:text-white">&times;</button>
             </div>
@@ -63,19 +70,26 @@
                     
                     <div class="mb-4">
                         <label id="label-team-home" class="block text-sm font-bold text-slate-700 mb-1">Team A Pick</label>
-                        <select id="player-home" required class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
-                            <!-- Options injected -->
-                        </select>
+                        <select id="player-home" required class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none"></select>
                     </div>
 
                     <div class="mb-4">
                         <label id="label-team-away" class="block text-sm font-bold text-slate-700 mb-1">Team B Pick</label>
-                        <select id="player-away" required class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
-                            <!-- Options injected -->
-                        </select>
+                        <select id="player-away" required class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none"></select>
                     </div>
 
-                    <div class="mb-6">
+                    <div class="mb-4 border-t pt-4 border-slate-100">
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Handicap (Voor) Given To</label>
+                        <select id="bet-handicap-team" class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="">No Handicap</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Handicap Goals (e.g. 0.5, 1, 1.5)</label>
+                        <input type="number" id="bet-handicap-value" min="0" step="0.5" value="0" class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+
+                    <div class="mb-6 border-t pt-4 border-slate-100">
                         <label class="block text-sm font-bold text-slate-700 mb-1">Bet Amount (IDR)</label>
                         <input type="number" id="bet-amount" required min="1000" step="1000" class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. 50000">
                     </div>
@@ -90,7 +104,7 @@
     <div id="result-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="bg-slate-800 p-4 text-white flex justify-between items-center">
-                <h3 class="font-bold text-lg">Set Match Result</h3>
+                <h3 class="font-bold text-lg">Edit Match Result</h3>
                 <button onclick="closeModal('result-modal')" class="text-slate-300 hover:text-white">&times;</button>
             </div>
             <div class="p-6">
@@ -109,7 +123,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition">Save Result & Calculate</button>
+                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition">Save Result</button>
                 </form>
             </div>
         </div>
@@ -121,18 +135,25 @@
         
         const defaultMatches = [
             { id: 1, home: "Mexico", away: "South Africa", homeScore: 2, awayScore: 0, status: "Finished", date: "11 Jun 2026", bets: [
-                { id: 101, p1: "Ngurah", p1Choice: "Mexico", p2: "Sony", p2Choice: "South Africa", amount: 100000 }
+                { id: 101, p1: "Ngurah", p1Choice: "Mexico", p2: "Sony", p2Choice: "South Africa", amount: 100000, handicapTeam: "", handicapValue: 0 }
             ]},
             { id: 2, home: "USA", away: "Paraguay", homeScore: 4, awayScore: 1, status: "Finished", date: "12 Jun 2026", bets: [
-                { id: 102, p1: "Wage", p1Choice: "USA", p2: "Suta", p2Choice: "Paraguay", amount: 50000 },
-                { id: 103, p1: "Putu Ardi", p1Choice: "USA", p2: "Made Mudiana", p2Choice: "Paraguay", amount: 150000 }
+                { id: 102, p1: "Wage", p1Choice: "USA", p2: "Suta", p2Choice: "Paraguay", amount: 50000, handicapTeam: "", handicapValue: 0 },
+                { id: 103, p1: "Putu Ardi", p1Choice: "USA", p2: "Made Mudiana", p2Choice: "Paraguay", amount: 150000, handicapTeam: "", handicapValue: 0 }
             ]},
-            { id: 3, home: "Brazil", away: "Morocco", homeScore: 1, awayScore: 1, status: "Finished", date: "14 Jun 2026", bets: []},
-            { id: 4, home: "Spain", away: "Cape Verde", homeScore: null, awayScore: null, status: "Upcoming", date: "16 Jun 2026", bets: [
-                { id: 104, p1: "Darsika", p1Choice: "Spain", p2: "Wipradnyana", p2Choice: "Cape Verde", amount: 200000 }
+            { id: 3, home: "Brazil", away: "Morocco", homeScore: 1, awayScore: 1, status: "Finished", date: "13 Jun 2026", bets: []},
+            { id: 4, home: "Germany", away: "Curaçao", homeScore: 7, awayScore: 1, status: "Finished", date: "14 Jun 2026", bets: []},
+            { id: 5, home: "Netherlands", away: "Japan", homeScore: 2, awayScore: 2, status: "Finished", date: "14 Jun 2026", bets: []},
+            { id: 6, home: "Sweden", away: "Tunisia", homeScore: 5, awayScore: 1, status: "Finished", date: "15 Jun 2026", bets: []},
+            { id: 7, home: "Spain", away: "Cape Verde", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: [
+                { id: 104, p1: "Darsika", p1Choice: "Spain", p2: "Wipradnyana", p2Choice: "Cape Verde", amount: 200000, handicapTeam: "Cape Verde", handicapValue: 2.5 }
             ]},
-            { id: 5, home: "Argentina", away: "Algeria", homeScore: null, awayScore: null, status: "Upcoming", date: "17 Jun 2026", bets: []},
-            { id: 6, home: "England", away: "Croatia", homeScore: null, awayScore: null, status: "Upcoming", date: "18 Jun 2026", bets: []}
+            { id: 8, home: "Belgium", away: "Egypt", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
+            { id: 9, home: "Saudi Arabia", away: "Uruguay", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
+            { id: 10, home: "Iran", away: "New Zealand", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
+            { id: 11, home: "France", away: "Senegal", homeScore: null, awayScore: null, status: "Upcoming", date: "16 Jun 2026", bets: []},
+            { id: 12, home: "Argentina", away: "Algeria", homeScore: null, awayScore: null, status: "Upcoming", date: "16 Jun 2026", bets: []},
+            { id: 13, home: "England", away: "Croatia", homeScore: null, awayScore: null, status: "Upcoming", date: "17 Jun 2026", bets: []}
         ];
 
         let matches = [];
@@ -142,7 +163,7 @@
 
         // App Initialization
         function init() {
-            const stored = localStorage.getItem('wc2026_bets');
+            const stored = localStorage.getItem('wc2026_bets_v2');
             if (stored) {
                 matches = JSON.parse(stored);
             } else {
@@ -153,19 +174,19 @@
         }
 
         function saveData() {
-            localStorage.setItem('wc2026_bets', JSON.stringify(matches));
+            localStorage.setItem('wc2026_bets_v2', JSON.stringify(matches));
         }
 
         function resetData() {
             if(confirm("Are you sure you want to reset the demo? All new bets will be lost.")){
-                localStorage.removeItem('wc2026_bets');
+                localStorage.removeItem('wc2026_bets_v2');
                 init();
             }
         }
 
         function renderApp() {
             renderMatches();
-            renderLeaderboard();
+            renderLeaderboardAndDebts();
         }
 
         // Render Functions
@@ -183,22 +204,32 @@
                 if (m.bets.length > 0) {
                     betsHTML = `<div class="mt-4 border-t pt-3">
                         <ul class="space-y-2">
-                            ${m.bets.map(b => `
-                                <li class="text-sm bg-slate-50 p-2 rounded-lg flex justify-between items-center border border-slate-100">
-                                    <div class="flex flex-col">
-                                        <span><b class="text-slate-800">${b.p1}</b> <span class="text-slate-400 text-xs">(${b.p1Choice})</span></span>
-                                        <span class="text-slate-400 text-xs italic">vs</span>
-                                        <span><b class="text-slate-800">${b.p2}</b> <span class="text-slate-400 text-xs">(${b.p2Choice})</span></span>
+                            ${m.bets.map(b => {
+                                let handicapStr = '';
+                                if (b.handicapTeam && b.handicapValue > 0) {
+                                    handicapStr = `<span class="block mt-1 text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded inline-block">Handicap: ${b.handicapTeam} +${b.handicapValue}</span>`;
+                                }
+                                return `
+                                <li class="text-sm bg-slate-50 p-2 rounded-lg flex flex-col border border-slate-100">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex flex-col">
+                                            <span><b class="text-slate-800">${b.p1}</b> <span class="text-slate-400 text-xs">(${b.p1Choice})</span></span>
+                                            <span class="text-slate-400 text-xs italic">vs</span>
+                                            <span><b class="text-slate-800">${b.p2}</b> <span class="text-slate-400 text-xs">(${b.p2Choice})</span></span>
+                                        </div>
+                                        <span class="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">${formatIDR(b.amount)}</span>
                                     </div>
-                                    <span class="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">${formatIDR(b.amount)}</span>
+                                    ${handicapStr}
                                 </li>
-                            `).join('')}
+                            `}).join('')}
                         </ul>
                     </div>`;
                 }
 
                 const actionsHTML = isFinished 
-                    ? `<button disabled class="mt-4 w-full bg-slate-100 text-slate-400 py-2 rounded-lg text-sm font-bold cursor-not-allowed uppercase tracking-wider">Match Ended</button>`
+                    ? `<div class="mt-4 flex gap-2">
+                        <button onclick="openResultModal(${m.id})" class="flex-1 bg-slate-200 text-slate-700 hover:bg-slate-300 py-2 rounded-lg text-sm font-bold transition">Edit Result</button>
+                       </div>`
                     : `<div class="mt-4 flex gap-2">
                         <button onclick="openBetModal(${m.id})" class="flex-1 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 py-2 rounded-lg text-sm font-bold transition">Add Bet</button>
                         <button onclick="openResultModal(${m.id})" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-bold transition">Set Result</button>
@@ -225,36 +256,52 @@
             });
         }
 
-        function renderLeaderboard() {
+        function renderLeaderboardAndDebts() {
             const tbody = document.getElementById('leaderboard-body');
+            const debtsList = document.getElementById('debts-list');
             tbody.innerHTML = '';
+            debtsList.innerHTML = '';
 
-            // Calculate stats
             let stats = {};
-            participants.forEach(p => stats[p] = { name: p, net: 0 });
+            let debts = {}; 
+            
+            participants.forEach(p => {
+                stats[p] = { name: p, net: 0 };
+                debts[p] = {};
+            });
 
             matches.forEach(m => {
                 if (m.status === 'Finished' && m.homeScore !== null && m.awayScore !== null) {
-                    let winner = null;
-                    if (m.homeScore > m.awayScore) winner = m.home;
-                    else if (m.awayScore > m.homeScore) winner = m.away;
-                    
-                    // If winner === null, it's a draw (push), nobody wins or loses.
                     m.bets.forEach(b => {
+                        // Apply Handicap
+                        let homeAdjusted = m.homeScore;
+                        let awayAdjusted = m.awayScore;
+                        
+                        if (b.handicapTeam === m.home) homeAdjusted += b.handicapValue;
+                        if (b.handicapTeam === m.away) awayAdjusted += b.handicapValue;
+
+                        let winner = null;
+                        if (homeAdjusted > awayAdjusted) winner = m.home;
+                        else if (awayAdjusted > homeAdjusted) winner = m.away;
+                        
                         if (winner) { 
                             if (b.p1Choice === winner) {
                                 stats[b.p1].net += b.amount;
                                 stats[b.p2].net -= b.amount;
+                                debts[b.p2][b.p1] = (debts[b.p2][b.p1] || 0) + b.amount;
+                                debts[b.p1][b.p2] = (debts[b.p1][b.p2] || 0) - b.amount;
                             } else if (b.p2Choice === winner) {
                                 stats[b.p2].net += b.amount;
                                 stats[b.p1].net -= b.amount;
+                                debts[b.p1][b.p2] = (debts[b.p1][b.p2] || 0) + b.amount;
+                                debts[b.p2][b.p1] = (debts[b.p2][b.p1] || 0) - b.amount;
                             }
                         }
                     });
                 }
             });
 
-            // Sort by Net Balance descending
+            // Sort Leaderboard
             const sortedStats = Object.values(stats).sort((a, b) => b.net - a.net);
 
             sortedStats.forEach((s, index) => {
@@ -267,6 +314,26 @@
                     </tr>
                 `;
             });
+
+            // Calculate active debts (only positive balances owed)
+            let hasDebts = false;
+            participants.forEach(debtor => {
+                for (const creditor in debts[debtor]) {
+                    if (debts[debtor][creditor] > 0) {
+                        hasDebts = true;
+                        debtsList.innerHTML += `
+                            <li class="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+                                <span><span class="font-bold text-red-500">${debtor}</span> owes <span class="font-bold text-emerald-600">${creditor}</span></span>
+                                <span class="font-bold text-slate-700">${formatIDR(debts[debtor][creditor])}</span>
+                            </li>
+                        `;
+                    }
+                }
+            });
+
+            if (!hasDebts) {
+                debtsList.innerHTML = `<li class="text-slate-400 italic text-center py-2">No active debts. All squared up!</li>`;
+            }
         }
 
         // Modals Logic
@@ -282,7 +349,18 @@
             document.getElementById('bet-match-id').value = match.id;
             document.getElementById('label-team-home').innerText = `Who picks ${match.home}?`;
             document.getElementById('label-team-away').innerText = `Who picks ${match.away}?`;
+            
+            // Populate handicap teams
+            const hcSelect = document.getElementById('bet-handicap-team');
+            hcSelect.innerHTML = `
+                <option value="">No Handicap</option>
+                <option value="${match.home}">${match.home}</option>
+                <option value="${match.away}">${match.away}</option>
+            `;
+            
             document.getElementById('bet-amount').value = '';
+            document.getElementById('bet-handicap-value').value = 0;
+            
             populatePlayerDropdowns();
             document.getElementById('bet-modal').classList.remove('hidden');
         }
@@ -293,6 +371,8 @@
             const p1 = document.getElementById('player-home').value;
             const p2 = document.getElementById('player-away').value;
             const amount = parseInt(document.getElementById('bet-amount').value);
+            const handicapTeam = document.getElementById('bet-handicap-team').value;
+            const handicapValue = parseFloat(document.getElementById('bet-handicap-value').value);
 
             if (p1 === p2) {
                 alert("A player cannot bet against themselves!");
@@ -306,7 +386,9 @@
                 p1Choice: match.home,
                 p2: p2,
                 p2Choice: match.away,
-                amount: amount
+                amount: amount,
+                handicapTeam: handicapTeam,
+                handicapValue: handicapValue || 0
             });
 
             saveData();
@@ -319,8 +401,8 @@
             document.getElementById('result-match-id').value = match.id;
             document.getElementById('score-label-home').innerText = match.home;
             document.getElementById('score-label-away').innerText = match.away;
-            document.getElementById('score-home').value = '';
-            document.getElementById('score-away').value = '';
+            document.getElementById('score-home').value = match.homeScore !== null ? match.homeScore : '';
+            document.getElementById('score-away').value = match.awayScore !== null ? match.awayScore : '';
             document.getElementById('result-modal').classList.remove('hidden');
         }
 
