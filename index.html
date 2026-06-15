@@ -11,7 +11,7 @@
     <div class="max-w-6xl mx-auto">
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <div class="flex items-center gap-4">
-                <img src="https://en.wikipedia.org/wiki/File:2026_FIFA_World_Cup_emblem.svg" alt="WC 2026 Logo" class="h-16 w-auto object-contain">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/2026_FIFA_World_Cup_logo.svg/200px-2026_FIFA_World_Cup_logo.svg.png" alt="WC 2026 Logo" class="h-16 w-auto object-contain">
                 <div>
                     <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Bet Tracker</h1>
                     <p class="text-slate-500 mt-1">Manage 1-on-1 bets in IDR with Handicaps</p>
@@ -59,6 +59,25 @@
                     <ul id="debts-list" class="space-y-3 text-sm">
                         </ul>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="login-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div class="bg-slate-800 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg">Admin Access</h3>
+                <button onclick="closeModal('login-modal')" class="text-slate-300 hover:text-white text-xl">&times;</button>
+            </div>
+            <div class="p-6">
+                <form id="login-form" onsubmit="submitLogin(event)">
+                    <div class="mb-6">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Enter Password</label>
+                        <input type="password" id="admin-password-input" required class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="••••••••">
+                        <p id="login-error" class="text-red-500 text-xs mt-2 hidden">Incorrect password. Please try again.</p>
+                    </div>
+                    <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg transition">Login</button>
+                </form>
             </div>
         </div>
     </div>
@@ -144,25 +163,18 @@
     <script>
         // Data Structure & Security
         const ADMIN_PASSWORD = "admin2026";
-        let isAdmin = false; // Starts in Guest mode
+        let isAdmin = false; 
 
         const participants = ["Ngurah", "Wipradnyana", "Wage", "Suta", "Putu Ardi", "Made Mudiana", "Darsika", "Sony"];
         
         const defaultMatches = [
-            { id: 1, home: "Mexico", away: "South Africa", homeScore: 2, awayScore: 0, status: "Finished", date: "11 Jun 2026", bets: [
-                { id: 101, p1: "Ngurah", p1Choice: "Mexico", p2: "Sony", p2Choice: "South Africa", amount: 100000, handicapTeam: "", handicapValue: 0 }
-            ]},
-            { id: 2, home: "USA", away: "Paraguay", homeScore: 4, awayScore: 1, status: "Finished", date: "12 Jun 2026", bets: [
-                { id: 102, p1: "Wage", p1Choice: "USA", p2: "Suta", p2Choice: "Paraguay", amount: 50000, handicapTeam: "", handicapValue: 0 },
-                { id: 103, p1: "Putu Ardi", p1Choice: "USA", p2: "Made Mudiana", p2Choice: "Paraguay", amount: 150000, handicapTeam: "", handicapValue: 0 }
-            ]},
-            { id: 3, home: "Brazil", away: "Morocco", homeScore: 1, awayScore: 1, status: "Finished", date: "13 Jun 2026", bets: []},
-            { id: 4, home: "Germany", away: "Curaçao", homeScore: 7, awayScore: 1, status: "Finished", date: "14 Jun 2026", bets: []},
-            { id: 5, home: "Netherlands", away: "Japan", homeScore: 2, awayScore: 2, status: "Finished", date: "14 Jun 2026", bets: []},
-            { id: 6, home: "Sweden", away: "Tunisia", homeScore: 5, awayScore: 1, status: "Finished", date: "15 Jun 2026", bets: []},
-            { id: 7, home: "Spain", away: "Cape Verde", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: [
-                { id: 104, p1: "Darsika", p1Choice: "Spain", p2: "Wipradnyana", p2Choice: "Cape Verde", amount: 200000, handicapTeam: "Cape Verde", handicapValue: 2.5 }
-            ]},
+            { id: 1, home: "Mexico", away: "South Africa", homeScore: null, awayScore: null, status: "Upcoming", date: "11 Jun 2026", bets: []},
+            { id: 2, home: "USA", away: "Paraguay", homeScore: null, awayScore: null, status: "Upcoming", date: "12 Jun 2026", bets: []},
+            { id: 3, home: "Brazil", away: "Morocco", homeScore: null, awayScore: null, status: "Upcoming", date: "13 Jun 2026", bets: []},
+            { id: 4, home: "Germany", away: "Curaçao", homeScore: null, awayScore: null, status: "Upcoming", date: "14 Jun 2026", bets: []},
+            { id: 5, home: "Netherlands", away: "Japan", homeScore: null, awayScore: null, status: "Upcoming", date: "14 Jun 2026", bets: []},
+            { id: 6, home: "Sweden", away: "Tunisia", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
+            { id: 7, home: "Spain", away: "Cape Verde", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
             { id: 8, home: "Belgium", away: "Egypt", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
             { id: 9, home: "Saudi Arabia", away: "Uruguay", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
             { id: 10, home: "Iran", away: "New Zealand", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
@@ -178,53 +190,67 @@
 
         // App Initialization
         function init() {
-            // Keep admin state during session reloads if desired, but default to safe Guest state
             const storedAdmin = sessionStorage.getItem('wc2026_admin');
             if (storedAdmin === 'true') isAdmin = true;
 
-            const stored = localStorage.getItem('wc2026_bets_final');
+            const stored = localStorage.getItem('wc2026_bets_stable');
+            
+            // Safe parsing with fallback to defaults if empty or corrupted
             if (stored) {
                 matches = JSON.parse(stored);
+                if (!matches || matches.length === 0) {
+                    matches = JSON.parse(JSON.stringify(defaultMatches));
+                    saveData();
+                }
             } else {
                 matches = JSON.parse(JSON.stringify(defaultMatches));
                 saveData();
             }
+            
             updateUIState();
             renderApp();
         }
 
         function saveData() {
-            localStorage.setItem('wc2026_bets_final', JSON.stringify(matches));
+            localStorage.setItem('wc2026_bets_stable', JSON.stringify(matches));
         }
 
         function resetData() {
             if (!isAdmin) return;
-            if(confirm("Are you sure you want to reset the demo? All data will be reset to defaults.")){
-                localStorage.removeItem('wc2026_bets_final');
-                init();
+            if(confirm("Are you sure you want to reset all data? This will clear all bets and scores.")){
+                matches = JSON.parse(JSON.stringify(defaultMatches));
+                saveData();
+                renderApp();
             }
         }
 
         // Authentication Logic
         function toggleAuth() {
             if (isAdmin) {
-                // Logout
                 isAdmin = false;
                 sessionStorage.removeItem('wc2026_admin');
-                alert("Logged out successfully. You are now in Guest mode.");
+                updateUIState();
+                renderApp();
             } else {
-                // Login
-                const password = prompt("Please enter the Admin Password:");
-                if (password === ADMIN_PASSWORD) {
-                    isAdmin = true;
-                    sessionStorage.setItem('wc2026_admin', 'true');
-                    alert("Login successful. You can now edit matches and bets.");
-                } else if (password !== null) {
-                    alert("Incorrect password.");
-                }
+                document.getElementById('admin-password-input').value = '';
+                document.getElementById('login-error').classList.add('hidden');
+                document.getElementById('login-modal').classList.remove('hidden');
             }
-            updateUIState();
-            renderApp(); // Re-render to show/hide admin buttons
+        }
+
+        function submitLogin(e) {
+            e.preventDefault();
+            const password = document.getElementById('admin-password-input').value;
+            
+            if (password === ADMIN_PASSWORD) {
+                isAdmin = true;
+                sessionStorage.setItem('wc2026_admin', 'true');
+                closeModal('login-modal');
+                updateUIState();
+                renderApp();
+            } else {
+                document.getElementById('login-error').classList.remove('hidden');
+            }
         }
 
         function updateUIState() {
@@ -268,7 +294,7 @@
                     : `<span class="text-xs bg-blue-100 text-blue-800 py-1 px-2 rounded-full font-bold tracking-wide uppercase">Upcoming</span>`;
                 
                 let betsHTML = '';
-                if (m.bets.length > 0) {
+                if (m.bets && m.bets.length > 0) {
                     betsHTML = `<div class="mt-4 border-t pt-3">
                         <ul class="space-y-2">
                             ${m.bets.map(b => {
@@ -277,7 +303,6 @@
                                     handicapStr = `<span class="block mt-1 text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded inline-block">Handicap: ${b.handicapTeam} +${b.handicapValue}</span>`;
                                 }
                                 
-                                // Only show Edit button if Admin
                                 const editButton = isAdmin 
                                     ? `<button onclick="openEditBetModal(${m.id}, ${b.id})" class="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded font-medium transition">✏️ Edit Bet</button>`
                                     : ``;
@@ -286,4 +311,100 @@
                                 <li class="text-sm bg-slate-50 p-3 rounded-lg flex flex-col border border-slate-100 group relative">
                                     <div class="flex justify-between items-start">
                                         <div class="flex flex-col">
-                                            <span><b class="text-
+                                            <span><b class="text-slate-800">${b.p1}</b> <span class="text-slate-400 text-xs">(${b.p1Choice})</span></span>
+                                            <span class="text-slate-400 text-xs italic">vs</span>
+                                            <span><b class="text-slate-800">${b.p2}</b> <span class="text-slate-400 text-xs">(${b.p2Choice})</span></span>
+                                        </div>
+                                        <div class="text-right flex flex-col items-end gap-2">
+                                            <span class="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">${formatIDR(b.amount)}</span>
+                                            ${editButton}
+                                        </div>
+                                    </div>
+                                    ${handicapStr}
+                                </li>
+                            `}).join('')}
+                        </ul>
+                    </div>`;
+                }
+
+                let actionsHTML = '';
+                if (isAdmin) {
+                    actionsHTML = `
+                        <div class="mt-4 flex gap-2">
+                            <button onclick="openBetModal(${m.id})" class="flex-1 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 py-2 rounded-lg text-sm font-bold transition">Add Bet</button>
+                            <button onclick="openResultModal(${m.id})" class="flex-1 ${isFinished ? 'bg-slate-600 hover:bg-slate-700' : 'bg-blue-600 hover:bg-blue-700'} text-white py-2 rounded-lg text-sm font-bold transition">
+                                ${isFinished ? 'Edit Result' : 'Set Result'}
+                            </button>
+                        </div>`;
+                }
+
+                const card = `
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between h-full">
+                        <div>
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-xs text-slate-400 font-bold tracking-wider uppercase">${m.date}</span>
+                                ${scoreHTML}
+                            </div>
+                            <div class="flex justify-between items-center text-lg font-bold mb-2">
+                                <span class="w-2/5 text-right">${m.home}</span>
+                                <span class="w-1/5 text-center text-slate-300 text-sm">vs</span>
+                                <span class="w-2/5 text-left">${m.away}</span>
+                            </div>
+                            ${betsHTML}
+                        </div>
+                        ${actionsHTML}
+                    </div>
+                `;
+                container.innerHTML += card;
+            });
+        }
+
+        function renderLeaderboardAndDebts() {
+            const tbody = document.getElementById('leaderboard-body');
+            const debtsList = document.getElementById('debts-list');
+            tbody.innerHTML = '';
+            debtsList.innerHTML = '';
+
+            let stats = {};
+            let debts = {}; 
+            
+            // Ensure ALL participants are listed, even if they have 0 bets
+            participants.forEach(p => {
+                stats[p] = { name: p, net: 0 };
+                debts[p] = {};
+            });
+
+            matches.forEach(m => {
+                if (m.status === 'Finished' && m.homeScore !== null && m.awayScore !== null && m.bets) {
+                    m.bets.forEach(b => {
+                        let homeAdjusted = m.homeScore;
+                        let awayAdjusted = m.awayScore;
+                        
+                        if (b.handicapTeam === m.home) homeAdjusted += b.handicapValue;
+                        if (b.handicapTeam === m.away) awayAdjusted += b.handicapValue;
+
+                        let winner = null;
+                        if (homeAdjusted > awayAdjusted) winner = m.home;
+                        else if (awayAdjusted > homeAdjusted) winner = m.away;
+                        
+                        if (winner) { 
+                            if (b.p1Choice === winner) {
+                                stats[b.p1].net += b.amount;
+                                stats[b.p2].net -= b.amount;
+                                debts[b.p2][b.p1] = (debts[b.p2][b.p1] || 0) + b.amount;
+                                debts[b.p1][b.p2] = (debts[b.p1][b.p2] || 0) - b.amount;
+                            } else if (b.p2Choice === winner) {
+                                stats[b.p2].net += b.amount;
+                                stats[b.p1].net -= b.amount;
+                                debts[b.p1][b.p2] = (debts[b.p1][b.p2] || 0) + b.amount;
+                                debts[b.p2][b.p1] = (debts[b.p2][b.p1] || 0) - b.amount;
+                            }
+                        }
+                    });
+                }
+            });
+
+            const sortedStats = Object.values(stats).sort((a, b) => b.net - a.net);
+
+            sortedStats.forEach((s, index) => {
+                const colorClass = s.net > 0 ? 'text-emerald-600' : (s.net < 0 ? 'text-red-500' : 'text-slate-50
