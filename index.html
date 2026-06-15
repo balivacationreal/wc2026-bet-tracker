@@ -11,7 +11,7 @@
     <div class="max-w-6xl mx-auto">
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <div class="flex items-center gap-4">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c8/2026_FIFA_World_Cup_logo.svg" alt="WC 2026 Logo" class="h-16 w-auto object-contain">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/2026_FIFA_World_Cup_logo.svg/200px-2026_FIFA_World_Cup_logo.svg.png" alt="WC 2026 Logo" class="h-16 w-auto object-contain" referrerpolicy="no-referrer">
                 <div>
                     <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Bet Tracker</h1>
                     <p class="text-slate-500 mt-1">Manage 1-on-1 bets in IDR with Handicaps</p>
@@ -167,14 +167,22 @@
 
         const participants = ["Ngurah", "Wipradnyana", "Wage", "Suta", "Putu Ardi", "Made Mudiana", "Darsika", "Sony"];
         
+        // Restored the accurate mock data to populate the Leaderboard
         const defaultMatches = [
-            { id: 1, home: "Mexico", away: "South Africa", homeScore: null, awayScore: null, status: "Upcoming", date: "11 Jun 2026", bets: []},
-            { id: 2, home: "USA", away: "Paraguay", homeScore: null, awayScore: null, status: "Upcoming", date: "12 Jun 2026", bets: []},
-            { id: 3, home: "Brazil", away: "Morocco", homeScore: null, awayScore: null, status: "Upcoming", date: "13 Jun 2026", bets: []},
-            { id: 4, home: "Germany", away: "Curaçao", homeScore: null, awayScore: null, status: "Upcoming", date: "14 Jun 2026", bets: []},
-            { id: 5, home: "Netherlands", away: "Japan", homeScore: null, awayScore: null, status: "Upcoming", date: "14 Jun 2026", bets: []},
-            { id: 6, home: "Sweden", away: "Tunisia", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
-            { id: 7, home: "Spain", away: "Cape Verde", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
+            { id: 1, home: "Mexico", away: "South Africa", homeScore: 2, awayScore: 0, status: "Finished", date: "11 Jun 2026", bets: [
+                { id: 101, p1: "Ngurah", p1Choice: "Mexico", p2: "Sony", p2Choice: "South Africa", amount: 100000, handicapTeam: "", handicapValue: 0 }
+            ]},
+            { id: 2, home: "USA", away: "Paraguay", homeScore: 4, awayScore: 1, status: "Finished", date: "12 Jun 2026", bets: [
+                { id: 102, p1: "Wage", p1Choice: "USA", p2: "Suta", p2Choice: "Paraguay", amount: 50000, handicapTeam: "", handicapValue: 0 },
+                { id: 103, p1: "Putu Ardi", p1Choice: "USA", p2: "Made Mudiana", p2Choice: "Paraguay", amount: 150000, handicapTeam: "", handicapValue: 0 }
+            ]},
+            { id: 3, home: "Brazil", away: "Morocco", homeScore: 1, awayScore: 1, status: "Finished", date: "13 Jun 2026", bets: []},
+            { id: 4, home: "Germany", away: "Curaçao", homeScore: 7, awayScore: 1, status: "Finished", date: "14 Jun 2026", bets: []},
+            { id: 5, home: "Netherlands", away: "Japan", homeScore: 2, awayScore: 2, status: "Finished", date: "14 Jun 2026", bets: []},
+            { id: 6, home: "Sweden", away: "Tunisia", homeScore: 5, awayScore: 1, status: "Finished", date: "15 Jun 2026", bets: []},
+            { id: 7, home: "Spain", away: "Cape Verde", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: [
+                { id: 104, p1: "Darsika", p1Choice: "Spain", p2: "Wipradnyana", p2Choice: "Cape Verde", amount: 200000, handicapTeam: "Cape Verde", handicapValue: 2.5 }
+            ]},
             { id: 8, home: "Belgium", away: "Egypt", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
             { id: 9, home: "Saudi Arabia", away: "Uruguay", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
             { id: 10, home: "Iran", away: "New Zealand", homeScore: null, awayScore: null, status: "Upcoming", date: "15 Jun 2026", bets: []},
@@ -187,17 +195,15 @@
 
         const formatIDR = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
 
-        // App Initialization with Error Handling (Self-Healing)
         function init() {
             const storedAdmin = sessionStorage.getItem('wc2026_admin');
             if (storedAdmin === 'true') isAdmin = true;
 
             try {
-                const stored = localStorage.getItem('wc2026_bets_stable');
+                // Changed the local storage key to force a clean slate from your previous corrupted version
+                const stored = localStorage.getItem('wc2026_bets_showcase');
                 if (stored) {
                     matches = JSON.parse(stored);
-                    
-                    // Verify the data structure is intact, otherwise force a reset
                     if (!Array.isArray(matches) || matches.length === 0 || !matches[0].hasOwnProperty('bets')) {
                         throw new Error("Corrupted or outdated data structure detected.");
                     }
@@ -215,12 +221,12 @@
         }
 
         function saveData() {
-            localStorage.setItem('wc2026_bets_stable', JSON.stringify(matches));
+            localStorage.setItem('wc2026_bets_showcase', JSON.stringify(matches));
         }
 
         function resetData() {
             if (!isAdmin) return;
-            if(confirm("Are you sure you want to reset all data? This will clear all bets and scores.")){
+            if(confirm("Are you sure you want to reset all data back to the demo showcase?")){
                 matches = JSON.parse(JSON.stringify(defaultMatches));
                 saveData();
                 renderApp();
