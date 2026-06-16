@@ -1,0 +1,11 @@
+# If you already have a netlify.toml, merge these sections into it.
+
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[functions]
+  node_bundler = "esbuild"
