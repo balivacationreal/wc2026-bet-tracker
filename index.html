@@ -9,7 +9,6 @@
 <body class="bg-slate-100 font-sans text-slate-800 p-4 md:p-8">
 
     <div class="max-w-6xl mx-auto">
-        <!-- Header -->
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <div class="flex items-center gap-4">
                 <img src="./wc-2026-logo.webp" alt="WC 2026 Logo" class="h-16 w-auto object-contain">
@@ -39,18 +38,15 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left Column: Matches -->
             <div class="lg:col-span-2 space-y-6">
                 <div class="flex justify-between items-center border-b pb-2">
                     <h2 class="text-xl font-bold text-slate-800">Fixtures & Bets</h2>
                     <span id="auth-status-badge" class="text-xs font-bold px-2 py-1 bg-slate-200 text-slate-600 rounded-md uppercase tracking-wide">Viewing as Guest</span>
                 </div>
                 <div id="matches-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Matches injected via JS -->
-                </div>
+                    </div>
             </div>
 
-            <!-- Right Column: Leaderboard & Debts -->
             <div class="space-y-6">
                 <h2 class="text-xl font-bold text-slate-800 border-b pb-2">Leaderboard</h2>
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -62,22 +58,19 @@
                             </tr>
                         </thead>
                         <tbody id="leaderboard-body" class="divide-y divide-slate-100">
-                            <!-- Leaderboard injected via JS -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
 
                 <h2 class="text-xl font-bold text-slate-800 border-b pb-2 mt-8">Settlements (Debts)</h2>
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
                     <ul id="debts-list" class="space-y-3 text-sm">
-                        <!-- Debts injected via JS -->
-                    </ul>
+                        </ul>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal: Admin Login -->
     <div id="login-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="bg-slate-800 p-4 text-white flex justify-between items-center">
@@ -97,7 +90,6 @@
         </div>
     </div>
 
-    <!-- Modal: Add / Edit Bet -->
     <div id="bet-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto">
             <div class="bg-slate-800 p-4 text-white flex justify-between items-center sticky top-0">
@@ -148,7 +140,6 @@
         </div>
     </div>
 
-    <!-- Modal: Set Result -->
     <div id="result-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="bg-slate-800 p-4 text-white flex justify-between items-center">
@@ -188,6 +179,7 @@
 
         const participants = ["Ngurah", "Wipradnyana", "Wage", "Suta", "Putu Ardi", "Made Mudiana", "Darsika", "Sony"];
         
+        // --- EXPANDED FLAGS DICTIONARY ---
         const flags = {
             "Mexico": "mx", "South Africa": "za", "USA": "us", "United States": "us", "Paraguay": "py",
             "Brazil": "br", "Morocco": "ma", "Germany": "de", "Curaçao": "cw",
@@ -195,8 +187,21 @@
             "Spain": "es", "Cape Verde": "cv", "Belgium": "be", "Egypt": "eg",
             "Saudi Arabia": "sa", "Uruguay": "uy", "Iran": "ir", "New Zealand": "nz",
             "France": "fr", "Senegal": "sn", "Argentina": "ar", "Algeria": "dz",
-            "England": "gb-eng", "Croatia": "hr",
-            "Ivory Coast": "ci", "Ecuador": "ec", "Australia": "au", "Turkey": "tr"
+            "England": "gb-eng", "Croatia": "hr", "Ivory Coast": "ci", "Côte d'Ivoire": "ci", 
+            "Ecuador": "ec", "Australia": "au", "Turkey": "tr", "Türkiye": "tr",
+            "Portugal": "pt", "Colombia": "co", "Italy": "it", "Switzerland": "ch", "Poland": "pl",
+            "Chile": "cl", "Peru": "pe", "South Korea": "kr", "Korea Republic": "kr", "Wales": "gb-wls",
+            "Scotland": "gb-sct", "Ghana": "gh", "Cameroon": "cm", "Serbia": "rs", "Denmark": "dk",
+            "Canada": "ca", "Costa Rica": "cr", "Panama": "pa", "Nigeria": "ng", "Qatar": "qa",
+            "Venezuela": "ve", "Bolivia": "bo", "Jamaica": "jm", "Honduras": "hn", "El Salvador": "sv",
+            "Mali": "ml", "Burkina Faso": "bf", "Guinea": "gn", "Uganda": "ug", "United Arab Emirates": "ae",
+            "China PR": "cn", "China": "cn", "Uzbekistan": "uz", "Iraq": "iq", "Oman": "om",
+            "Syria": "sy", "Bahrain": "bh", "Jordan": "jo", "Palestine": "ps", "Lebanon": "lb",
+            "India": "in", "Vietnam": "vn", "Thailand": "th", "Indonesia": "id", "Malaysia": "my",
+            "Singapore": "sg", "Philippines": "ph", "Myanmar": "mm", "Republic of Ireland": "ie", 
+            "Northern Ireland": "gb-nir", "Austria": "at", "Hungary": "hu", "Czechia": "cz", 
+            "Czech Republic": "cz", "Slovakia": "sk", "Romania": "ro", "Bulgaria": "bg", "Greece": "gr", 
+            "Ukraine": "ua", "Norway": "no", "Finland": "fi", "Iceland": "is", "Israel": "il"
         };
 
         const defaultMatches = [
@@ -282,6 +287,7 @@
             renderApp();
         }
 
+        // --- UPDATED API SYNC WITH STATUS DETECTION ---
         async function fetchLiveMatches() {
             if (!isAdmin) return;
             
@@ -300,6 +306,8 @@
                 
                 if (data.matches) {
                     let addedCount = 0;
+                    let updatedCount = 0;
+                    
                     data.matches.forEach(apiMatch => {
                         if(apiMatch.homeTeam.name && apiMatch.awayTeam.name) {
                             const homeTeam = apiMatch.homeTeam.name;
@@ -307,29 +315,44 @@
                             const dateObj = new Date(apiMatch.utcDate);
                             const dateStr = dateObj.toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'});
 
+                            // Determine actual status and scores from the API
+                            const isFinished = (apiMatch.status === 'FINISHED' || apiMatch.status === 'AWARDED');
+                            const matchStatus = isFinished ? 'Finished' : 'Upcoming';
+                            const homeScore = isFinished ? (apiMatch.score?.fullTime?.home ?? 0) : null;
+                            const awayScore = isFinished ? (apiMatch.score?.fullTime?.away ?? 0) : null;
+
                             const exists = matches.find(m => m.home === homeTeam && m.away === awayTeam);
                             
                             if (!exists) {
+                                // Add brand new match
                                 matches.push({
                                     id: apiMatch.id || Date.now() + Math.floor(Math.random() * 10000),
                                     home: homeTeam,
                                     away: awayTeam,
-                                    homeScore: null,
-                                    awayScore: null,
-                                    status: "Upcoming",
+                                    homeScore: homeScore,
+                                    awayScore: awayScore,
+                                    status: matchStatus,
                                     date: dateStr,
                                     bets: []
                                 });
                                 addedCount++;
+                            } else {
+                                // Update existing match if it finished in real life
+                                if (matchStatus === 'Finished' && exists.status !== 'Finished') {
+                                    exists.status = 'Finished';
+                                    exists.homeScore = homeScore;
+                                    exists.awayScore = awayScore;
+                                    updatedCount++;
+                                }
                             }
                         }
                     });
                     
-                    if (addedCount > 0) {
+                    if (addedCount > 0 || updatedCount > 0) {
                         await saveData();
-                        alert(`Successfully imported ${addedCount} new upcoming matches from the API!`);
+                        alert(`Success! Imported ${addedCount} new matches and updated scores for ${updatedCount} finished matches.`);
                     } else {
-                        alert("Your database is already completely up to date with the API schedule.");
+                        alert("Your database is already up to date with the API schedule.");
                     }
                 } else {
                     alert("No matches found or invalid API response.");
@@ -406,6 +429,8 @@
         }
 
         function renderApp() {
+            // Sort matches so finished ones are generally first (optional, but nice)
+            // or just render as they are
             renderMatches();
             renderLeaderboardAndDebts();
         }
