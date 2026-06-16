@@ -28,8 +28,23 @@ function formatDate(iso) {
   } catch { return iso; }
 }
 
+export class RateLimitError extends Error {
+  constructor(resetSeconds) {
+    super("football-data rate limit reached");
+    this.name = "RateLimitError";
+    this.resetSeconds = resetSeconds;
+  }
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function fdGet(path) {
   const res = await fetch(`${FD_BASE}${path}`, { headers: { "X-Auth-Token": token() } });
+  if (res.status === 429) {
+    const raw = res.headers.get("X-RequestCounter-Reset") || res.headers.get("x-requestcounter-reset");
+    const reset = parseInt(raw || "60", 10);
+    throw new RateLimitError(Number.isNaN(reset) ? 60 : reset);
+  }
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`football-data ${path} -> ${res.status} ${body.slice(0, 200)}`);
@@ -126,23 +141,27 @@ function mergeMatches(existing, apiMatches) {
   return { matches, added, updated };
 }
 
-// Pulls everything from football-data and returns the pieces to store.
-export async function fetchTournament() {
-  const [matchData, scorerData, standingData] = await Promise.all([
-    fdGet(`/competitions/${WC}/matches`),
-    fdGet(`/competitions/${WC}/scorers?limit=20`).catch(() => null),
-    fdGet(`/competitions/${WC}/standings`).catch(() => null)
-  ]);
-
+// Pulls from football-data with the 10-calls/min free tier in mind:
+//  - matches first (the only required call)
+//  - scorers + standings are optional, spaced out, and best-effort
+export async function fetchTournament({ includeStats = true } = {}) {
+  const matchData = await fdGet(`/competitions/${WC}/matches`); // 1 call (required)
   if (!matchData || !Array.isArray(matchData.matches)) {
     throw new Error("football-data returned no matches");
   }
 
-  return {
-    apiMatches: matchData.matches,
-    scorers: transformScorers(scorerData),
-    standings: transformStandings(standingData)
-  };
+  let scorers = null;
+  let standings = null;
+
+  if (includeStats) {
+    // Best-effort: if these hit the limit, we still keep the matches we already got.
+    try { await sleep(1200); scorers = transformScorers(await fdGet(`/competitions/${WC}/scorers?limit=20`)); }
+    catch (e) { /* keep previous scorers */ }
+    try { await sleep(1200); standings = transformStandings(await fdGet(`/competitions/${WC}/standings`)); }
+    catch (e) { /* keep previous standings */ }
+  }
+
+  return { apiMatches: matchData.matches, scorers, standings };
 }
 
 export { mergeMatches };

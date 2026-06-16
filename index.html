@@ -415,8 +415,34 @@
             THIRD_PLACE: 'Third place', FINAL: 'Final'
         };
 
+        let syncCooldownTimer = null;
+        function startSyncCooldown(seconds) {
+            const btn = document.getElementById('btn-api-sync');
+            if (!btn) return;
+            if (syncCooldownTimer) clearInterval(syncCooldownTimer);
+            let remaining = Math.max(1, Math.ceil(seconds));
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            const tick = () => {
+                if (remaining <= 0) {
+                    clearInterval(syncCooldownTimer);
+                    syncCooldownTimer = null;
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    btn.innerText = '⬇️ Fetch API Matches';
+                    return;
+                }
+                btn.innerText = `⏳ ${remaining}s`;
+                remaining--;
+            };
+            tick();
+            syncCooldownTimer = setInterval(tick, 1000);
+        }
+
         async function fetchLiveMatches() {
             if (!isAdmin || !adminPw) return;
+            const btn = document.getElementById('btn-api-sync');
+            if (btn && btn.disabled) return; // respect cooldown
             showLoading(true);
             try {
                 const res = await fetch(FN.sync, {
@@ -428,21 +454,40 @@
                 if (res.status === 401) { handleAuthExpired(); return; }
 
                 const data = await res.json();
+
+                // Rate limited by football-data — back off for the suggested time.
+                if (res.status === 429 || data.error === 'rate_limited') {
+                    const wait = data.wait || 60;
+                    startSyncCooldown(wait);
+                    alert(data.message || `football-data limit reached. Wait ~${wait}s and try again.`);
+                    return;
+                }
+
                 if (!res.ok || !data.ok) throw new Error(data.error || 'sync failed');
 
-                // Use the fresh record the function returned (instant, no cache wait).
-                matches = data.record.matches || matches;
-                scorers = data.record.scorers || scorers;
-                standings = data.record.standings || standings;
+                // Update from the record the function returned (instant, no cache wait).
+                if (data.record) {
+                    matches = data.record.matches || matches;
+                    scorers = data.record.scorers || scorers;
+                    standings = data.record.standings || standings;
+                    renderApp();
+                    scheduleAutoRefresh();
+                }
 
-                renderApp();
-                scheduleAutoRefresh();
-                alert(`Synced! ${data.added} new fixtures, ${data.updated} scores updated.\nGolden Boot: ${data.scorers} players \u00b7 Standings: ${data.standings} groups.`);
+                if (data.cached) {
+                    // We synced very recently; just enforce the remaining cooldown quietly.
+                    startSyncCooldown(data.wait || 15);
+                } else {
+                    startSyncCooldown(15);
+                    const statsNote = data.statsRefreshed ? `\nGolden Boot: ${data.scorers} players \u00b7 Standings: ${data.standings} groups.` : '';
+                    alert(`Synced! ${data.added} new fixtures, ${data.updated} scores updated.${statsNote}`);
+                }
             } catch (error) {
                 console.error("Sync error:", error);
-                alert("Sync failed: " + error.message + "\n(Free tier allows 10 calls/min \u2014 wait a moment and retry.)");
+                alert("Sync failed: " + error.message);
+            } finally {
+                showLoading(false);
             }
-            showLoading(false);
         }
 
         function toggleAuth() {
