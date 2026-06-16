@@ -4,9 +4,9 @@ const BASE = "https://api.jsonbin.io/v3/b";
 
 function cfg() {
   const binId = process.env.JSONBIN_BIN_ID;
-  const key = process.env.JSONBIN_KEY; // must allow Read + Update
+  const key = process.env.JSONBIN_KEY || process.env.JSONBIN_API_KEY; // must allow Read + Update
   if (!binId || !key) {
-    throw new Error("Missing JSONBIN_BIN_ID or JSONBIN_KEY environment variable");
+    throw new Error("Missing JSONBIN_BIN_ID or JSONBIN_KEY/JSONBIN_API_KEY environment variable");
   }
   return { binId, key };
 }

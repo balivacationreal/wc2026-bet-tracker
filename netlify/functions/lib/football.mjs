@@ -7,8 +7,8 @@ const WC = "2000"; // FIFA World Cup competition id
 const WITA = "Asia/Makassar"; // Bali, UTC+8
 
 function token() {
-  const t = process.env.FOOTBALL_DATA_TOKEN;
-  if (!t) throw new Error("Missing FOOTBALL_DATA_TOKEN environment variable");
+  const t = process.env.FOOTBALL_DATA_TOKEN || process.env.FOOTBALL_DATA_API_KEY;
+  if (!t) throw new Error("Missing FOOTBALL_DATA_TOKEN/FOOTBALL_DATA_API_KEY environment variable");
   return t;
 }
 
