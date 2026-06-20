@@ -16,77 +16,80 @@
 <body class="bg-slate-100 font-sans text-slate-800 p-4 md:p-8">
 
     <div class="max-w-6xl mx-auto">
+        <!-- HEADER -->
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <div class="flex items-center gap-4">
-                <img src="./wc-2026-logo.webp" alt="WC 2026 Logo" class="h-16 w-auto object-contain">
+                <img src="./wc-2026-logo.webp" alt="WC 2026 Logo" class="h-16 w-auto object-contain" onerror="this.style.display='none'">
                 <div>
-                    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">World Cup 2026 Bet Tracker</h1>
-                    <p class="text-slate-500 mt-1">Manage 1-on-1 bets in IDR with Handicaps</p>
+                    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Bet Tracker</h1>
+                    <p class="text-slate-500 mt-1">Signed 1-on-1 bets in IDR &middot; World Cup 2026</p>
                 </div>
             </div>
-            
-            <div class="mt-4 md:mt-0 flex flex-col md:flex-row gap-3 items-center">
-                <div id="loading-indicator" class="hidden text-sm font-bold text-blue-600 animate-pulse mr-4">
-                    Syncing with Cloud...
-                </div>
-                
-                <button id="btn-api-sync" onclick="fetchLiveMatches()" class="hidden bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 px-4 py-2 rounded-lg font-medium transition text-sm">
-                    ⬇️ Fetch API Matches
-                </button>
 
-                <button id="btn-login" onclick="toggleAuth()" class="bg-slate-800 text-white hover:bg-slate-700 px-6 py-2 rounded-lg font-medium transition text-sm shadow-sm">
-                    🔒 Admin Login
-                </button>
+            <div class="mt-4 md:mt-0 flex flex-col md:flex-row gap-3 items-center">
+                <div id="loading-indicator" class="hidden text-sm font-bold text-blue-600 animate-pulse mr-2">Syncing&hellip;</div>
+
+                <!-- treasurer-only controls -->
+                <button id="btn-api-sync" onclick="doSync()" class="hidden bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 px-4 py-2 rounded-lg font-medium transition text-sm">&#11015;&#65039; Sync</button>
+                <button id="btn-deposit" onclick="openDepositModal()" class="hidden bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-4 py-2 rounded-lg font-medium transition text-sm">&#128176; Deposit</button>
+                <button id="btn-add-player" onclick="openPlayerModal()" class="hidden bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 px-4 py-2 rounded-lg font-medium transition text-sm">&#65291; Player</button>
+
+                <span id="user-badge" class="hidden text-sm font-bold text-slate-700"></span>
+                <button id="btn-changepw" onclick="changePassword()" class="hidden text-slate-400 hover:text-slate-700 text-xs underline">password</button>
+                <button id="btn-auth" onclick="onAuthButton()" class="bg-slate-800 text-white hover:bg-slate-700 px-6 py-2 rounded-lg font-medium transition text-sm shadow-sm">&#128274; Log in</button>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- LEFT: inbox + fixtures -->
             <div class="lg:col-span-2 space-y-6">
+                <div id="inbox-panel" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <h2 class="font-bold text-amber-800 mb-3 flex items-center gap-2">&#9997;&#65039; Bets awaiting your signature</h2>
+                    <ul id="inbox-list" class="space-y-3"></ul>
+                </div>
+
                 <div class="flex justify-between items-center border-b pb-2">
-                    <h2 class="text-xl font-bold text-slate-800">Fixtures & Bets</h2>
-                    <span id="auth-status-badge" class="text-xs font-bold px-2 py-1 bg-slate-200 text-slate-600 rounded-md uppercase tracking-wide">Viewing as Guest</span>
+                    <h2 class="text-xl font-bold text-slate-800">Fixtures &amp; Bets</h2>
+                    <span id="auth-status-badge" class="text-xs font-bold px-2 py-1 bg-slate-200 text-slate-600 rounded-md uppercase tracking-wide">Guest</span>
                 </div>
 
                 <div class="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
                     <div id="filter-chips" class="flex flex-wrap gap-2 text-xs font-bold">
                         <button data-filter="all"      class="filter-chip px-3 py-1.5 rounded-full transition">All</button>
-                        <button data-filter="live"     class="filter-chip px-3 py-1.5 rounded-full transition">🔴 Live</button>
+                        <button data-filter="live"     class="filter-chip px-3 py-1.5 rounded-full transition">&#128308; Live</button>
                         <button data-filter="upcoming" class="filter-chip px-3 py-1.5 rounded-full transition">Upcoming</button>
                         <button data-filter="finished" class="filter-chip px-3 py-1.5 rounded-full transition">Finished</button>
-                        <button data-filter="bets"     class="filter-chip px-3 py-1.5 rounded-full transition">⭐ With Bets</button>
+                        <button data-filter="bets"     class="filter-chip px-3 py-1.5 rounded-full transition">&#11088; With Bets</button>
                     </div>
-                    <input id="search-input" type="text" oninput="onSearch(this.value)" placeholder="Search team…"
+                    <input id="search-input" type="text" oninput="onSearch(this.value)" placeholder="Search team&hellip;"
                         class="border-slate-300 border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-44">
                 </div>
 
                 <p id="match-count" class="text-xs text-slate-400 -mt-2"></p>
-
-                <div id="matches-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    </div>
+                <div id="matches-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             </div>
 
+            <!-- RIGHT: treasury, golden boot, standings -->
             <div class="space-y-6">
-                <h2 class="text-xl font-bold text-slate-800 border-b pb-2">Leaderboard</h2>
+                <h2 class="text-xl font-bold text-slate-800 border-b pb-2 flex items-center justify-between">
+                    <span>&#127974; Treasury</span>
+                    <button id="btn-history" onclick="showHistory()" class="hidden text-xs text-blue-600 underline font-medium">my history</button>
+                </h2>
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <table class="w-full text-left border-collapse">
+                    <table class="w-full text-left border-collapse text-sm">
                         <thead>
                             <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                                <th class="p-4 border-b">Player</th>
-                                <th class="p-4 border-b text-right">Net Balance</th>
+                                <th class="p-3 border-b">Player</th>
+                                <th class="p-3 border-b text-right">Deposited</th>
+                                <th class="p-3 border-b text-right">Balance</th>
                             </tr>
                         </thead>
-                        <tbody id="leaderboard-body" class="divide-y divide-slate-100">
-                            </tbody>
+                        <tbody id="treasury-body" class="divide-y divide-slate-100"></tbody>
                     </table>
+                    <p id="treasury-note" class="hidden p-4 text-slate-400 italic text-center text-sm"></p>
                 </div>
 
-                <h2 class="text-xl font-bold text-slate-800 border-b pb-2 mt-8">Settlements (Debts)</h2>
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                    <ul id="debts-list" class="space-y-3 text-sm">
-                        </ul>
-                </div>
-
-                <h2 class="text-xl font-bold text-slate-800 border-b pb-2 mt-8 flex items-center gap-2">👟 Golden Boot</h2>
+                <h2 class="text-xl font-bold text-slate-800 border-b pb-2 mt-8 flex items-center gap-2">&#128099; Golden Boot</h2>
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <ul id="scorers-list" class="divide-y divide-slate-100 text-sm">
                         <li class="p-4 text-slate-400 italic text-center">No scorer data yet.</li>
@@ -95,8 +98,8 @@
 
                 <details class="bg-white rounded-xl shadow-sm border border-slate-200 mt-8 group">
                     <summary class="cursor-pointer p-4 font-bold text-slate-800 select-none flex items-center justify-between">
-                        <span>📊 Group Standings</span>
-                        <span class="text-slate-400 text-xs group-open:rotate-180 transition">▼</span>
+                        <span>&#128202; Group Standings</span>
+                        <span class="text-slate-400 text-xs group-open:rotate-180 transition">&#9660;</span>
                     </summary>
                     <div id="standings-container" class="p-4 pt-0 space-y-4 text-sm">
                         <p class="text-slate-400 italic text-center">No standings data yet.</p>
@@ -106,130 +109,166 @@
         </div>
     </div>
 
-    <div id="login-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+    <!-- AUTH MODAL -->
+    <div id="auth-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="bg-slate-800 p-4 text-white flex justify-between items-center">
-                <h3 class="font-bold text-lg">Admin Access</h3>
-                <button onclick="closeModal('login-modal')" class="text-slate-300 hover:text-white text-xl">&times;</button>
+                <h3 class="font-bold text-lg">Player Access</h3>
+                <button onclick="closeModal('auth-modal')" class="text-slate-300 hover:text-white text-xl">&times;</button>
             </div>
             <div class="p-6">
-                <form id="login-form" onsubmit="submitLogin(event)">
-                    <div class="mb-6">
-                        <label class="block text-sm font-bold text-slate-700 mb-2">Enter Password</label>
-                        <input type="password" id="admin-password-input" required class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="••••••••">
-                        <p id="login-error" class="text-red-500 text-xs mt-2 hidden">Incorrect password. Please try again.</p>
-                    </div>
-                    <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg transition">Login</button>
-                </form>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Your name</label>
+                <select id="auth-name" onchange="onAuthNameChange()" class="w-full border-slate-300 border rounded-lg p-2.5 mb-2 focus:ring-2 focus:ring-blue-500 outline-none"></select>
+                <p id="auth-hint" class="text-xs text-slate-500 mb-3"></p>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Password</label>
+                <input type="password" id="auth-password" class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" onkeydown="if(event.key==='Enter')doAuth()">
+                <p id="auth-error" class="text-red-500 text-xs mt-2 hidden"></p>
+                <button id="auth-submit" onclick="doAuth()" class="w-full mt-5 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg transition">Continue</button>
             </div>
         </div>
     </div>
 
+    <!-- PROPOSE BET MODAL -->
     <div id="bet-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto">
             <div class="bg-slate-800 p-4 text-white flex justify-between items-center sticky top-0">
-                <h3 id="bet-modal-title" class="font-bold text-lg">Add New Bet</h3>
+                <h3 id="bet-modal-title" class="font-bold text-lg">Propose a Bet</h3>
                 <button onclick="closeModal('bet-modal')" class="text-slate-300 hover:text-white text-xl">&times;</button>
             </div>
             <div class="p-6">
-                <form id="bet-form" onsubmit="submitBet(event)">
-                    <input type="hidden" id="bet-match-id">
-                    <input type="hidden" id="bet-id">
-                    
-                    <div class="mb-4">
-                        <label id="label-team-home" class="block text-sm font-bold text-slate-700 mb-1">Team A Pick</label>
-                        <select id="player-home" required class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none"></select>
-                    </div>
+                <input type="hidden" id="bet-match-id">
+                <p id="bet-balance-note" class="text-xs text-slate-500 mb-4"></p>
 
-                    <div class="mb-4">
-                        <label id="label-team-away" class="block text-sm font-bold text-slate-700 mb-1">Team B Pick</label>
-                        <select id="player-away" required class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none"></select>
-                    </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Your pick</label>
+                    <select id="bet-mychoice" class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none"></select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Opponent (takes the other team)</label>
+                    <select id="bet-opponent" class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none"></select>
+                </div>
 
-                    <div class="mb-4 border-t pt-4 border-slate-100">
-                        <label class="block text-sm font-bold text-slate-700 mb-1">Handicap (Voor) Given To</label>
-                        <select id="bet-handicap-team" class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
-                            <option value="">No Handicap</option>
-                        </select>
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-bold text-slate-700 mb-1">Handicap Goals (e.g. 0.5, 1, 1.5)</label>
-                        <input type="number" id="bet-handicap-value" min="0" step="0.5" value="0" class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
-                    </div>
-
-                    <div class="mb-6 border-t pt-4 border-slate-100">
-                        <label class="block text-sm font-bold text-slate-700 mb-1">Bet Amount (IDR)</label>
-                        <input type="number" id="bet-amount" required min="1000" step="1000" class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. 50000">
-                    </div>
-
-                    <div class="flex gap-3">
-                        <button type="button" id="delete-bet-btn" onclick="deleteBet()" class="hidden bg-red-100 text-red-600 hover:bg-red-200 font-bold py-3 px-4 rounded-lg transition text-sm">
-                            🗑️ Delete
-                        </button>
-                        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition">
-                            Save Bet
-                        </button>
-                    </div>
-                </form>
+                <div class="mb-4 border-t pt-4 border-slate-100">
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Handicap (Voor) given to</label>
+                    <select id="bet-handicap-team" class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">No Handicap</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Handicap goals (e.g. 0.5, 1, 1.5)</label>
+                    <input type="number" id="bet-handicap-value" min="0" step="0.5" value="0" class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="mb-6 border-t pt-4 border-slate-100">
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Stake (IDR)</label>
+                    <input type="number" id="bet-amount" min="1000" step="1000" class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. 20000">
+                </div>
+                <p id="bet-error" class="text-red-500 text-xs mb-3 hidden"></p>
+                <button onclick="submitProposal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition">Propose &amp; sign</button>
+                <p class="text-[11px] text-slate-400 mt-3 text-center">Proposing signs the bet on your side. It becomes binding once your opponent signs.</p>
             </div>
         </div>
     </div>
 
+    <!-- RESULT MODAL (treasurer) -->
     <div id="result-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="bg-slate-800 p-4 text-white flex justify-between items-center">
-                <h3 class="font-bold text-lg">Edit Match Result</h3>
+                <h3 class="font-bold text-lg">Match Result</h3>
                 <button onclick="closeModal('result-modal')" class="text-slate-300 hover:text-white">&times;</button>
             </div>
             <div class="p-6">
-                <form id="result-form" onsubmit="submitResult(event)">
-                    <input type="hidden" id="result-match-id">
-                    
-                    <div class="flex items-center justify-between gap-4 mb-6">
-                        <div class="text-center w-1/2">
-                            <label id="score-label-home" class="block text-sm font-bold text-slate-700 mb-2 truncate"></label>
-                            <input type="number" id="score-home" required min="0" class="w-full text-center text-2xl border-slate-300 border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
-                        </div>
-                        <span class="text-xl font-bold text-slate-400 mt-6">-</span>
-                        <div class="text-center w-1/2">
-                            <label id="score-label-away" class="block text-sm font-bold text-slate-700 mb-2 truncate"></label>
-                            <input type="number" id="score-away" required min="0" class="w-full text-center text-2xl border-slate-300 border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
-                        </div>
+                <input type="hidden" id="result-match-id">
+                <div class="flex items-center justify-between gap-4 mb-6">
+                    <div class="text-center w-1/2">
+                        <label id="score-label-home" class="block text-sm font-bold text-slate-700 mb-2 truncate"></label>
+                        <input type="number" id="score-home" min="0" class="w-full text-center text-2xl border-slate-300 border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
-
-                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition">Save Result</button>
-                </form>
+                    <span class="text-xl font-bold text-slate-400 mt-6">-</span>
+                    <div class="text-center w-1/2">
+                        <label id="score-label-away" class="block text-sm font-bold text-slate-700 mb-2 truncate"></label>
+                        <input type="number" id="score-away" min="0" class="w-full text-center text-2xl border-slate-300 border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+                <p id="result-error" class="text-red-500 text-xs mb-3 hidden"></p>
+                <button onclick="submitResult()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition">Save result &amp; settle</button>
+                <p class="text-[11px] text-slate-400 mt-3 text-center">Saving a final score settles every agreed bet on this match and moves money in the treasury.</p>
             </div>
+        </div>
+    </div>
+
+    <!-- DEPOSIT MODAL (treasurer) -->
+    <div id="deposit-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div class="bg-emerald-700 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg">Record a Deposit</h3>
+                <button onclick="closeModal('deposit-modal')" class="text-emerald-100 hover:text-white text-xl">&times;</button>
+            </div>
+            <div class="p-6">
+                <label class="block text-sm font-bold text-slate-700 mb-1">Player</label>
+                <select id="deposit-player" class="w-full border-slate-300 border rounded-lg p-2.5 mb-4 focus:ring-2 focus:ring-emerald-500 outline-none"></select>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Amount (IDR) &mdash; use a negative number to correct</label>
+                <input type="number" id="deposit-amount" step="1000" class="w-full border-slate-300 border rounded-lg p-2.5 mb-4 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="e.g. 100000">
+                <label class="block text-sm font-bold text-slate-700 mb-1">Note (optional)</label>
+                <input type="text" id="deposit-note" class="w-full border-slate-300 border rounded-lg p-2.5 mb-4 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="e.g. initial deposit">
+                <p id="deposit-error" class="text-red-500 text-xs mb-3 hidden"></p>
+                <button onclick="submitDeposit()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg transition">Record</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD PLAYER MODAL (treasurer) -->
+    <div id="player-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div class="bg-slate-800 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg">Add a Player</h3>
+                <button onclick="closeModal('player-modal')" class="text-slate-300 hover:text-white text-xl">&times;</button>
+            </div>
+            <div class="p-6">
+                <label class="block text-sm font-bold text-slate-700 mb-1">Name</label>
+                <input type="text" id="player-name" class="w-full border-slate-300 border rounded-lg p-2.5 mb-4 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. Komang">
+                <label class="flex items-center gap-2 text-sm text-slate-700 mb-4">
+                    <input type="checkbox" id="player-admin"> Make treasurer (admin)
+                </label>
+                <p id="player-error" class="text-red-500 text-xs mb-3 hidden"></p>
+                <button onclick="submitPlayer()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg transition">Add</button>
+                <p class="text-[11px] text-slate-400 mt-3 text-center">The player then claims their own password from the login screen.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- HISTORY MODAL -->
+    <div id="history-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden max-h-[85vh] flex flex-col">
+            <div class="bg-slate-800 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg">My History</h3>
+                <button onclick="closeModal('history-modal')" class="text-slate-300 hover:text-white text-xl">&times;</button>
+            </div>
+            <div id="history-body" class="p-4 overflow-y-auto text-sm"></div>
         </div>
     </div>
 
     <script>
-        // --- API CONFIGURATION ---
-        // No secrets here anymore. All keys (jsonbin, football-data, admin password)
-        // live in Netlify environment variables and are used only inside the functions.
-        const FN = {
-            get:  '/.netlify/functions/get-data',
-            save: '/.netlify/functions/save-data',
-            sync: '/.netlify/functions/sync'
+        // ---------- CONFIG ----------
+        const CONVEX_HTTP = "https://reliable-stork-400.convex.site";
+        let token = localStorage.getItem('wc_token') || null;
+        let viewer = null;          // { _id, name, role }
+        let isAdmin = false;
+
+        const STAGE_LABELS = {
+            GROUP_STAGE: 'Group Stage', LAST_32: 'Round of 32', LAST_16: 'Round of 16',
+            QUARTER_FINALS: 'Quarter-final', SEMI_FINALS: 'Semi-final',
+            THIRD_PLACE: 'Third place', FINAL: 'Final'
         };
 
-        // Admin password is entered at login and kept only for this browser session
-        // (never in the page source). It is verified server-side on every write.
-        let adminPw = sessionStorage.getItem('wc2026_admin_pw') || null;
-        let isAdmin = !!adminPw;
-
-        const participants = ["Ngurah", "Wipradnyana", "Wage", "Suta", "Ali Topan", "Midun", "Darsika", "Sony"];
-        
-        // --- EXPANDED FLAGS DICTIONARY ---
         const flags = {
             "Mexico": "mx", "South Africa": "za", "USA": "us", "United States": "us", "Paraguay": "py",
-            "Brazil": "br", "Morocco": "ma", "Germany": "de", "Curaçao": "cw",
+            "Brazil": "br", "Morocco": "ma", "Germany": "de", "Cura\u00e7ao": "cw",
             "Netherlands": "nl", "Japan": "jp", "Sweden": "se", "Tunisia": "tn",
             "Spain": "es", "Cape Verde": "cv", "Belgium": "be", "Egypt": "eg",
             "Saudi Arabia": "sa", "Uruguay": "uy", "Iran": "ir", "New Zealand": "nz",
             "France": "fr", "Senegal": "sn", "Argentina": "ar", "Algeria": "dz",
-            "England": "gb-eng", "Croatia": "hr", "Ivory Coast": "ci", "Côte d'Ivoire": "ci", 
-            "Ecuador": "ec", "Australia": "au", "Turkey": "tr", "Türkiye": "tr",
+            "England": "gb-eng", "Croatia": "hr", "Ivory Coast": "ci", "C\u00f4te d'Ivoire": "ci",
+            "Ecuador": "ec", "Australia": "au", "Turkey": "tr", "T\u00fcrkiye": "tr",
             "Portugal": "pt", "Colombia": "co", "Italy": "it", "Switzerland": "ch", "Poland": "pl",
             "Chile": "cl", "Peru": "pe", "South Korea": "kr", "Korea Republic": "kr", "Wales": "gb-wls",
             "Scotland": "gb-sct", "Ghana": "gh", "Cameroon": "cm", "Serbia": "rs", "Denmark": "dk",
@@ -239,97 +278,192 @@
             "China PR": "cn", "China": "cn", "Uzbekistan": "uz", "Iraq": "iq", "Oman": "om",
             "Syria": "sy", "Bahrain": "bh", "Jordan": "jo", "Palestine": "ps", "Lebanon": "lb",
             "India": "in", "Vietnam": "vn", "Thailand": "th", "Indonesia": "id", "Malaysia": "my",
-            "Singapore": "sg", "Philippines": "ph", "Myanmar": "mm", "Republic of Ireland": "ie", 
-            "Northern Ireland": "gb-nir", "Austria": "at", "Hungary": "hu", "Czechia": "cz", 
-            "Czech Republic": "cz", "Slovakia": "sk", "Romania": "ro", "Bulgaria": "bg", "Greece": "gr", 
+            "Singapore": "sg", "Philippines": "ph", "Myanmar": "mm", "Republic of Ireland": "ie",
+            "Northern Ireland": "gb-nir", "Austria": "at", "Hungary": "hu", "Czechia": "cz",
+            "Czech Republic": "cz", "Slovakia": "sk", "Romania": "ro", "Bulgaria": "bg", "Greece": "gr",
             "Ukraine": "ua", "Norway": "no", "Finland": "fi", "Iceland": "is", "Israel": "il"
         };
 
-        let matches = [];
-        let scorers = [];
-        let standings = [];
+        // ---------- STATE ----------
+        let S = { players: [], matches: [], bets: [], accounts: [], scorers: [], standings: [], inbox: [], me: null };
+        let betsByMatch = {};
         let currentFilter = 'all';
         let searchTerm = '';
         let refreshTimer = null;
 
-        const formatIDR = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
+        // ---------- HELPERS ----------
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const formatIDR = n => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0);
+        const fmtTime = ms => { try { return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(ms)); } catch { return ''; } };
 
-        // Returns a sortable timestamp (ms). Prefers the stored ISO utcDate,
-        // falls back to parsing the human "15 Jun 2026" string, else +Infinity.
+        function showLoading(on) { document.getElementById('loading-indicator').classList.toggle('hidden', !on); }
+
+        async function api(path, { method = 'GET', body = null, auth = true } = {}) {
+            const headers = {};
+            if (body) headers['Content-Type'] = 'application/json';
+            if (auth && token) headers['Authorization'] = 'Bearer ' + token;
+            let res, data = {};
+            try {
+                res = await fetch(CONVEX_HTTP + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+                try { data = await res.json(); } catch { data = {}; }
+            } catch (e) {
+                return { ok: false, status: 0, data: { error: 'Network error \u2014 check your connection.' } };
+            }
+            if (res.status === 401 && auth && token && path !== '/state') handleAuthExpired();
+            return { ok: res.ok, status: res.status, data };
+        }
+
         function getMatchTime(m) {
-            if (m.utcDate) {
-                const t = Date.parse(m.utcDate);
-                if (!isNaN(t)) return t;
-            }
-            if (m.date) {
-                const t = Date.parse(m.date);
-                if (!isNaN(t)) return t;
-            }
+            if (m.utcDate) { const t = Date.parse(m.utcDate); if (!isNaN(t)) return t; }
+            if (m.date) { const t = Date.parse(m.date); if (!isNaN(t)) return t; }
             return Infinity;
         }
-
-        // Single source of truth for who won a bet (handicap-adjusted).
-        // Used by BOTH the leaderboard and the per-match crown so they always agree.
-        function getBetOutcome(m, b) {
-            if (m.status !== 'Finished' || m.homeScore == null || m.awayScore == null) return null;
-            let homeAdj = m.homeScore;
-            let awayAdj = m.awayScore;
-            if (b.handicapTeam === m.home) homeAdj += (b.handicapValue || 0);
-            if (b.handicapTeam === m.away) awayAdj += (b.handicapValue || 0);
-
-            let winnerTeam = null;
-            if (homeAdj > awayAdj) winnerTeam = m.home;
-            else if (awayAdj > homeAdj) winnerTeam = m.away;
-
-            if (!winnerTeam) return { result: 'push' };
-            if (b.p1Choice === winnerTeam) return { result: 'p1', winner: b.p1, loser: b.p2, winningTeam: winnerTeam };
-            if (b.p2Choice === winnerTeam) return { result: 'p2', winner: b.p2, loser: b.p1, winningTeam: winnerTeam };
-            return { result: 'push' };
-        }
+        const matchByApiId = id => S.matches.find(m => m.apiId === id);
 
         function flagImg(name, crest, side) {
             const margin = side === 'home' ? 'mr-2' : 'ml-2';
             const code = flags[name];
-            if (code) return `<img src="https://flagcdn.com/w40/${code}.png" alt="${name}" class="inline-block w-6 h-auto ${margin} rounded-sm shadow-sm">`;
-            if (crest) return `<img src="${crest}" alt="${name}" class="inline-block w-6 h-6 ${margin} object-contain">`;
+            if (code) return `<img src="https://flagcdn.com/w40/${code}.png" alt="" class="inline-block w-6 h-auto ${margin} rounded-sm shadow-sm">`;
+            if (crest) return `<img src="${esc(crest)}" alt="" class="inline-block w-6 h-6 ${margin} object-contain">`;
             return "";
         }
-
-        function showLoading(show) {
-            const loader = document.getElementById('loading-indicator');
-            if(show) loader.classList.remove('hidden');
-            else loader.classList.add('hidden');
+        function phaseLabel(m) {
+            if (m.group) return m.group.replace(/_/g, ' ').replace(/\bGROUP\b/i, 'Group');
+            if (m.stage && STAGE_LABELS[m.stage]) return STAGE_LABELS[m.stage];
+            if (m.stage) return m.stage.replace(/_/g, ' ');
+            return '';
         }
 
-        async function init() {
+        // ---------- LOAD ----------
+        async function loadState() {
             showLoading(true);
-            try {
-                const response = await fetch(FN.get);
-                const data = await response.json();
-
-                matches = Array.isArray(data.matches) ? data.matches : [];
-                scorers = Array.isArray(data.scorers) ? data.scorers : [];
-                standings = Array.isArray(data.standings) ? data.standings : [];
-
-                if (matches.length === 0) {
-                    document.getElementById('matches-container').innerHTML =
-                        `<p class="col-span-2 text-slate-500 p-4 bg-white rounded-lg border border-slate-200">No fixtures yet. Log in as admin and tap <b>Fetch API Matches</b> to load the schedule.</p>`;
-                }
-            } catch (error) {
-                console.error("Cloud fetch failed.", error);
-                document.getElementById('matches-container').innerHTML = `<p class="col-span-2 text-red-500 font-bold p-4 bg-red-50 rounded-lg border border-red-200">Database connection error. Please try again shortly.</p>`;
-                showLoading(false);
+            const { ok, data } = await api('/state', { auth: true });
+            showLoading(false);
+            if (!ok) {
+                document.getElementById('matches-container').innerHTML =
+                    `<p class="col-span-2 text-red-500 font-bold p-4 bg-red-50 rounded-lg border border-red-200">Could not reach the database. ${esc(data.error || '')}</p>`;
                 return;
             }
-
-            showLoading(false);
+            S = data;
+            viewer = data.viewer || null;
+            isAdmin = !!(viewer && viewer.role === 'admin');
+            betsByMatch = {};
+            (S.bets || []).forEach(b => { (betsByMatch[b.matchApiId] = betsByMatch[b.matchApiId] || []).push(b); });
             updateUIState();
-            setupFilters();
             renderApp();
             scheduleAutoRefresh();
         }
 
-        // --- FILTER CHIPS ---
+        function scheduleAutoRefresh() {
+            if (refreshTimer) clearTimeout(refreshTimer);
+            const hasLive = (S.matches || []).some(m => m.status === 'Live');
+            const delay = hasLive ? 60000 : 300000;
+            refreshTimer = setTimeout(async () => {
+                if (!document.hidden && !anyModalOpen()) await loadState();
+                else scheduleAutoRefresh();
+            }, delay);
+        }
+        function anyModalOpen() {
+            return ['auth-modal', 'bet-modal', 'result-modal', 'deposit-modal', 'player-modal', 'history-modal']
+                .some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
+        }
+
+        // ---------- AUTH ----------
+        function onAuthButton() {
+            if (viewer) { logout(); return; }
+            const sel = document.getElementById('auth-name');
+            sel.innerHTML = (S.players || []).filter(p => p.active)
+                .map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
+            document.getElementById('auth-password').value = '';
+            document.getElementById('auth-error').classList.add('hidden');
+            onAuthNameChange();
+            document.getElementById('auth-modal').classList.remove('hidden');
+        }
+        function onAuthNameChange() {
+            const name = document.getElementById('auth-name').value;
+            const p = (S.players || []).find(x => x.name === name);
+            const claimed = p && p.claimed;
+            document.getElementById('auth-hint').innerText = claimed
+                ? 'Enter your password.'
+                : 'First time \u2014 pick a password to claim your account.';
+            document.getElementById('auth-submit').innerText = claimed ? 'Log in' : 'Claim account';
+        }
+        async function doAuth() {
+            const name = document.getElementById('auth-name').value;
+            const password = document.getElementById('auth-password').value;
+            const p = (S.players || []).find(x => x.name === name);
+            const endpoint = (p && p.claimed) ? '/login' : '/claim';
+            const errEl = document.getElementById('auth-error');
+            errEl.classList.add('hidden');
+            const { ok, data } = await api(endpoint, { method: 'POST', auth: false, body: { name, password } });
+            if (ok && data.token) {
+                token = data.token;
+                localStorage.setItem('wc_token', token);
+                closeModal('auth-modal');
+                await loadState();
+            } else {
+                errEl.innerText = data.error || 'Could not sign in.';
+                errEl.classList.remove('hidden');
+            }
+        }
+        async function logout() {
+            await api('/logout', { method: 'POST' });
+            token = null; viewer = null; isAdmin = false;
+            localStorage.removeItem('wc_token');
+            await loadState();
+        }
+        function handleAuthExpired() {
+            token = null; viewer = null; isAdmin = false;
+            localStorage.removeItem('wc_token');
+            alert('Your session has expired \u2014 please log in again.');
+        }
+        async function changePassword() {
+            const np = prompt('New password (at least 4 characters):');
+            if (!np) return;
+            const { ok, data } = await api('/change-password', { method: 'POST', body: { newPassword: np } });
+            alert(ok ? 'Password updated.' : (data.error || 'Failed.'));
+        }
+
+        function updateUIState() {
+            const badge = document.getElementById('auth-status-badge');
+            const userBadge = document.getElementById('user-badge');
+            const authBtn = document.getElementById('btn-auth');
+            const adminBtns = ['btn-api-sync', 'btn-deposit', 'btn-add-player'];
+
+            if (viewer) {
+                authBtn.innerHTML = '&#128275; Log out';
+                authBtn.classList.replace('bg-slate-800', 'bg-red-600');
+                authBtn.classList.replace('hover:bg-slate-700', 'hover:bg-red-700');
+                userBadge.classList.remove('hidden');
+                userBadge.innerText = `${viewer.name}${isAdmin ? ' \u00b7 Treasurer' : ''}`;
+                document.getElementById('btn-changepw').classList.remove('hidden');
+                document.getElementById('btn-history').classList.remove('hidden');
+                badge.innerText = isAdmin ? 'Treasurer' : 'Member';
+                badge.classList.replace('bg-slate-200', 'bg-emerald-100');
+                badge.classList.replace('text-slate-600', 'text-emerald-700');
+            } else {
+                authBtn.innerHTML = '&#128274; Log in';
+                authBtn.classList.replace('bg-red-600', 'bg-slate-800');
+                authBtn.classList.replace('hover:bg-red-700', 'hover:bg-slate-700');
+                userBadge.classList.add('hidden');
+                document.getElementById('btn-changepw').classList.add('hidden');
+                document.getElementById('btn-history').classList.add('hidden');
+                badge.innerText = 'Guest';
+                badge.classList.replace('bg-emerald-100', 'bg-slate-200');
+                badge.classList.replace('text-emerald-700', 'text-slate-600');
+            }
+            adminBtns.forEach(id => document.getElementById(id).classList.toggle('hidden', !isAdmin));
+        }
+
+        // ---------- RENDER ----------
+        function renderApp() {
+            renderInbox();
+            renderMatches();
+            renderTreasury();
+            renderScorers();
+            renderStandings();
+        }
+
         function setupFilters() {
             document.querySelectorAll('.filter-chip').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -342,661 +476,381 @@
             const allChip = document.querySelector('.filter-chip[data-filter="all"]');
             if (allChip) allChip.classList.add('active');
         }
-
-        function onSearch(value) {
-            searchTerm = (value || '').trim().toLowerCase();
-            renderMatches();
-        }
-
-        function anyModalOpen() {
-            return ['login-modal', 'bet-modal', 'result-modal']
-                .some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
-        }
-
-        // --- LIGHT AUTO-REFRESH (only while a match is live; pauses when tab hidden) ---
-        function scheduleAutoRefresh() {
-            if (refreshTimer) clearTimeout(refreshTimer);
-            const hasLive = matches.some(m => m.status === 'Live');
-            const delay = hasLive ? 60000 : 300000; // 60s during live games, else 5 min
-            refreshTimer = setTimeout(async () => {
-                if (!document.hidden && !anyModalOpen()) await reloadFromCloud();
-                scheduleAutoRefresh();
-            }, delay);
-        }
-
-        async function reloadFromCloud() {
-            try {
-                const response = await fetch(FN.get);
-                const data = await response.json();
-                if (Array.isArray(data.matches)) {
-                    matches = data.matches;
-                    scorers = Array.isArray(data.scorers) ? data.scorers : scorers;
-                    standings = Array.isArray(data.standings) ? data.standings : standings;
-                    renderApp();
-                }
-            } catch (e) { /* silent: keep showing current data */ }
-        }
-
-        async function saveData() {
-            if (!isAdmin || !adminPw) return;
-            showLoading(true);
-            try {
-                const res = await fetch(FN.save, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: adminPw, matches: matches })
-                });
-                if (res.status === 401) {
-                    handleAuthExpired();
-                    return;
-                }
-                if (!res.ok) throw new Error('save failed');
-            } catch (error) {
-                alert("Failed to save. Check your connection and try again.");
-            }
-            showLoading(false);
-            renderApp();
-        }
-
-        function handleAuthExpired() {
-            showLoading(false);
-            alert("Your admin session is no longer valid. Please log in again.");
-            isAdmin = false;
-            adminPw = null;
-            sessionStorage.removeItem('wc2026_admin_pw');
-            updateUIState();
-            renderApp();
-        }
-
-        // --- API SYNC (now server-side; admin clicks, the function does the work) ---
-        const STAGE_LABELS = {
-            GROUP_STAGE: 'Group Stage', LAST_32: 'Round of 32', LAST_16: 'Round of 16',
-            QUARTER_FINALS: 'Quarter-final', SEMI_FINALS: 'Semi-final',
-            THIRD_PLACE: 'Third place', FINAL: 'Final'
-        };
-
-        let syncCooldownTimer = null;
-        function startSyncCooldown(seconds) {
-            const btn = document.getElementById('btn-api-sync');
-            if (!btn) return;
-            if (syncCooldownTimer) clearInterval(syncCooldownTimer);
-            let remaining = Math.max(1, Math.ceil(seconds));
-            btn.disabled = true;
-            btn.classList.add('opacity-50', 'cursor-not-allowed');
-            const tick = () => {
-                if (remaining <= 0) {
-                    clearInterval(syncCooldownTimer);
-                    syncCooldownTimer = null;
-                    btn.disabled = false;
-                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    btn.innerText = '⬇️ Fetch API Matches';
-                    return;
-                }
-                btn.innerText = `⏳ ${remaining}s`;
-                remaining--;
-            };
-            tick();
-            syncCooldownTimer = setInterval(tick, 1000);
-        }
-
-        async function fetchLiveMatches() {
-            if (!isAdmin || !adminPw) return;
-            const btn = document.getElementById('btn-api-sync');
-            if (btn && btn.disabled) return; // respect cooldown
-            showLoading(true);
-            try {
-                const res = await fetch(FN.sync, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: adminPw })
-                });
-
-                if (res.status === 401) { handleAuthExpired(); return; }
-
-                const data = await res.json();
-
-                // Rate limited by football-data — back off for the suggested time.
-                if (res.status === 429 || data.error === 'rate_limited') {
-                    const wait = data.wait || 60;
-                    startSyncCooldown(wait);
-                    alert(data.message || `football-data limit reached. Wait ~${wait}s and try again.`);
-                    return;
-                }
-
-                if (!res.ok || !data.ok) throw new Error(data.error || 'sync failed');
-
-                // Update from the record the function returned (instant, no cache wait).
-                if (data.record) {
-                    matches = data.record.matches || matches;
-                    scorers = data.record.scorers || scorers;
-                    standings = data.record.standings || standings;
-                    renderApp();
-                    scheduleAutoRefresh();
-                }
-
-                if (data.cached) {
-                    // We synced very recently; just enforce the remaining cooldown quietly.
-                    startSyncCooldown(data.wait || 15);
-                } else {
-                    startSyncCooldown(15);
-                    const statsNote = data.statsRefreshed ? `\nGolden Boot: ${data.scorers} players \u00b7 Standings: ${data.standings} groups.` : '';
-                    alert(`Synced! ${data.added} new fixtures, ${data.updated} scores updated.${statsNote}`);
-                }
-            } catch (error) {
-                console.error("Sync error:", error);
-                alert("Sync failed: " + error.message);
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        function toggleAuth() {
-            if (isAdmin) {
-                isAdmin = false;
-                adminPw = null;
-                sessionStorage.removeItem('wc2026_admin_pw');
-                updateUIState();
-                renderApp();
-            } else {
-                document.getElementById('admin-password-input').value = '';
-                document.getElementById('login-error').classList.add('hidden');
-                document.getElementById('login-modal').classList.remove('hidden');
-            }
-        }
-
-        async function submitLogin(e) {
-            e.preventDefault();
-            const password = document.getElementById('admin-password-input').value;
-            const errEl = document.getElementById('login-error');
-            errEl.classList.add('hidden');
-            showLoading(true);
-            try {
-                const res = await fetch(FN.save, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password, verifyOnly: true })
-                });
-                showLoading(false);
-                if (res.ok) {
-                    isAdmin = true;
-                    adminPw = password;
-                    sessionStorage.setItem('wc2026_admin_pw', password);
-                    closeModal('login-modal');
-                    updateUIState();
-                    renderApp();
-                } else {
-                    errEl.classList.remove('hidden');
-                }
-            } catch (err) {
-                showLoading(false);
-                errEl.innerText = "Login failed — check your connection.";
-                errEl.classList.remove('hidden');
-            }
-        }
-
-        function updateUIState() {
-            const btnLogin = document.getElementById('btn-login');
-            const btnApiSync = document.getElementById('btn-api-sync');
-            const statusBadge = document.getElementById('auth-status-badge');
-
-            if (isAdmin) {
-                btnLogin.innerHTML = "🔓 Logout";
-                btnLogin.classList.replace('bg-slate-800', 'bg-red-600');
-                btnLogin.classList.replace('hover:bg-slate-700', 'hover:bg-red-700');
-                btnApiSync.classList.remove('hidden');
-                statusBadge.innerText = "Admin Mode Active";
-                statusBadge.classList.replace('bg-slate-200', 'bg-emerald-100');
-                statusBadge.classList.replace('text-slate-600', 'text-emerald-700');
-            } else {
-                btnLogin.innerHTML = "🔒 Admin Login";
-                btnLogin.classList.replace('bg-red-600', 'bg-slate-800');
-                btnLogin.classList.replace('hover:bg-red-700', 'hover:bg-slate-700');
-                btnApiSync.classList.add('hidden');
-                statusBadge.innerText = "Viewing as Guest";
-                statusBadge.classList.replace('bg-emerald-100', 'bg-slate-200');
-                statusBadge.classList.replace('text-emerald-700', 'text-slate-600');
-            }
-        }
-
-        function renderApp() {
-            renderMatches();
-            renderLeaderboardAndDebts();
-            renderScorers();
-            renderStandings();
-        }
-
-        function phaseLabel(m) {
-            if (m.group) return m.group.replace(/_/g, ' ').replace(/\bGROUP\b/i, 'Group');
-            if (m.stage && STAGE_LABELS[m.stage]) return STAGE_LABELS[m.stage];
-            if (m.stage) return m.stage.replace(/_/g, ' ');
-            return '';
-        }
+        function onSearch(v) { searchTerm = (v || '').trim().toLowerCase(); renderMatches(); }
 
         function getVisibleMatches() {
-            let list = matches.slice().sort((a, b) => getMatchTime(a) - getMatchTime(b));
+            let list = (S.matches || []).slice().sort((a, b) => getMatchTime(a) - getMatchTime(b));
             if (currentFilter === 'live') list = list.filter(m => m.status === 'Live');
             else if (currentFilter === 'upcoming') list = list.filter(m => m.status === 'Upcoming');
             else if (currentFilter === 'finished') list = list.filter(m => m.status === 'Finished');
-            else if (currentFilter === 'bets') list = list.filter(m => m.bets && m.bets.length > 0);
-            if (searchTerm) {
-                list = list.filter(m =>
-                    (m.home || '').toLowerCase().includes(searchTerm) ||
-                    (m.away || '').toLowerCase().includes(searchTerm));
-            }
+            else if (currentFilter === 'bets') list = list.filter(m => (betsByMatch[m.apiId] || []).length > 0);
+            if (searchTerm) list = list.filter(m =>
+                (m.home || '').toLowerCase().includes(searchTerm) || (m.away || '').toLowerCase().includes(searchTerm));
             return list;
+        }
+
+        function sigBadge(bet, role) {
+            const s = (bet.signatures || []).find(x => x.role === role);
+            const who = role === 'A' ? bet.playerA : bet.playerB;
+            if (s) return `<span class="text-emerald-600">&#9997;&#65039; ${esc(who)} signed <span class="text-slate-400">${fmtTime(s.signedAt)}</span></span>`;
+            return `<span class="text-amber-600">&#8987; awaiting ${esc(who)}</span>`;
+        }
+
+        function renderBet(bet, match) {
+            const isProposer = viewer && bet.playerAId === viewer._id;
+            const isOpponent = viewer && bet.playerBId === viewer._id;
+
+            let handicapStr = '';
+            if (bet.handicapTeam && bet.handicapValue > 0)
+                handicapStr = `<span class="block mt-1 text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded inline-block">Handicap: ${esc(bet.handicapTeam)} +${bet.handicapValue}</span>`;
+
+            let statusLine = '', actions = '';
+            if (bet.status === 'awaiting_opponent') {
+                statusLine = `<div class="mt-2 text-xs flex flex-col gap-0.5">${sigBadge(bet, 'A')}${sigBadge(bet, 'B')}</div>`;
+                if (isOpponent) {
+                    actions = `<div class="mt-2 flex gap-2">
+                        <button onclick="signBet('${bet._id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 rounded">&#9997;&#65039; Agree &amp; sign</button>
+                        <button onclick="rejectBet('${bet._id}')" class="bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold py-1.5 px-3 rounded">Reject</button>
+                    </div>`;
+                } else if (isProposer) {
+                    actions = `<button onclick="cancelBet('${bet._id}')" class="mt-2 text-xs text-slate-400 hover:text-red-600 underline">Cancel proposal</button>`;
+                }
+            } else if (bet.status === 'agreed') {
+                const finished = match && match.status === 'Finished';
+                statusLine = `<div class="mt-2 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded font-bold">&#9989; Agreed by both \u2014 binding${finished ? ' \u00b7 awaiting settlement (sync)' : ''}</div>`;
+            } else if (bet.status === 'settled') {
+                if (bet.outcome === 'push') {
+                    statusLine = `<div class="mt-2 text-xs font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded">&#9878;&#65039; Push \u2014 no payout (handicap tie)</div>`;
+                } else {
+                    const loser = bet.winnerId === bet.playerAId ? bet.playerB : bet.playerA;
+                    statusLine = `<div class="mt-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded">&#128081; ${esc(bet.winner)} won ${formatIDR(bet.amount)} from ${esc(loser)}</div>`;
+                }
+            }
+
+            const settledWin = bet.status === 'settled' && bet.outcome !== 'push';
+            const aWin = settledWin && bet.winnerId === bet.playerAId;
+            const bWin = settledWin && bet.winnerId === bet.playerBId;
+            const nameCell = (name, choice, win, lose) =>
+                `${win ? '&#128081; ' : ''}<b class="${win ? 'text-emerald-700' : lose ? 'text-slate-400' : 'text-slate-800'}">${esc(name)}</b> <span class="text-slate-400 text-xs">(${esc(choice)})</span>`;
+
+            return `<li class="text-sm bg-slate-50 p-3 rounded-lg flex flex-col border border-slate-100">
+                <div class="flex justify-between items-start">
+                    <div class="flex flex-col gap-0.5">
+                        <span>${nameCell(bet.playerA, bet.choiceA, aWin, bWin)}</span>
+                        <span class="text-slate-400 text-xs italic">vs</span>
+                        <span>${nameCell(bet.playerB, bet.choiceB, bWin, aWin)}</span>
+                    </div>
+                    <span class="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">${formatIDR(bet.amount)}</span>
+                </div>
+                ${handicapStr}${statusLine}${actions}
+            </li>`;
         }
 
         function renderMatches() {
             const container = document.getElementById('matches-container');
-            container.innerHTML = '';
             const visible = getVisibleMatches();
-
             const countEl = document.getElementById('match-count');
-            if (countEl) countEl.innerText = `Showing ${visible.length} of ${matches.length} matches`;
+            if (countEl) countEl.innerText = `Showing ${visible.length} of ${(S.matches || []).length} matches`;
 
+            if ((S.matches || []).length === 0) {
+                container.innerHTML = `<p class="col-span-2 text-slate-500 p-4 bg-white rounded-lg border border-slate-200">No fixtures yet.${isAdmin ? ' Tap <b>Sync</b> to load the schedule.' : ' The treasurer needs to sync the schedule.'}</p>`;
+                return;
+            }
             if (visible.length === 0) {
                 container.innerHTML = `<p class="col-span-2 text-slate-400 italic p-6 text-center bg-white rounded-xl border border-slate-200">No matches match this view.</p>`;
                 return;
             }
 
-            visible.forEach(m => {
-                const isFinished = m.status === 'Finished';
-                const isLive = m.status === 'Live';
-
-                // Score / status block
+            container.innerHTML = visible.map(m => {
+                const isFinished = m.status === 'Finished', isLive = m.status === 'Live';
                 let scoreHTML;
                 if (isFinished) {
                     const ht = (m.htHome != null && m.htAway != null) ? `<span class="block text-[10px] text-slate-400 font-medium text-center mt-0.5">HT ${m.htHome}-${m.htAway}</span>` : '';
                     scoreHTML = `<div class="text-center"><span class="font-bold text-xl text-slate-800 bg-slate-100 px-3 py-1 rounded-md">${m.homeScore ?? '-'} - ${m.awayScore ?? '-'}</span>${ht}</div>`;
                 } else if (isLive) {
                     const min = m.minute != null ? `${m.minute}'` : 'LIVE';
-                    scoreHTML = `<div class="text-center">
-                        <span class="font-bold text-xl text-red-600 bg-red-50 px-3 py-1 rounded-md">${m.homeScore ?? 0} - ${m.awayScore ?? 0}</span>
-                        <span class="block text-[10px] font-bold text-red-600 mt-0.5"><span class="live-dot">●</span> ${min}</span>
-                    </div>`;
+                    scoreHTML = `<div class="text-center"><span class="font-bold text-xl text-red-600 bg-red-50 px-3 py-1 rounded-md">${m.homeScore ?? 0} - ${m.awayScore ?? 0}</span><span class="block text-[10px] font-bold text-red-600 mt-0.5"><span class="live-dot">&#9679;</span> ${min}</span></div>`;
                 } else {
                     scoreHTML = `<span class="text-xs bg-blue-100 text-blue-800 py-1 px-2 rounded-full font-bold tracking-wide uppercase">Upcoming</span>`;
                 }
-
-                const homeFlagHTML = flagImg(m.home, m.crestHome, 'home');
-                const awayFlagHTML = flagImg(m.away, m.crestAway, 'away');
                 const phase = phaseLabel(m);
-                const phaseHTML = phase ? `<span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-bold uppercase tracking-wide">${phase}</span>` : '';
+                const phaseHTML = phase ? `<span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-bold uppercase tracking-wide">${esc(phase)}</span>` : '';
 
-                let betsHTML = '';
-                if (m.bets && m.bets.length > 0) {
-                    betsHTML = `<div class="mt-4 border-t pt-3">
-                        <ul class="space-y-2">
-                            ${m.bets.map(b => {
-                                const outcome = getBetOutcome(m, b);
-                                const crown = `<span title="Winner">👑</span>`;
-                                const winName = (player, choice, isWinner, isLoser) => {
-                                    const base = `<b class="${isWinner ? 'text-emerald-700' : isLoser ? 'text-slate-400' : 'text-slate-800'}">${player}</b>`;
-                                    const tag = `<span class="text-slate-400 text-xs">(${choice})</span>`;
-                                    return `${isWinner ? crown + ' ' : ''}${base} ${tag}`;
-                                };
+                const bets = betsByMatch[m.apiId] || [];
+                const betsHTML = bets.length ? `<div class="mt-4 border-t pt-3"><ul class="space-y-2">${bets.map(b => renderBet(b, m)).join('')}</ul></div>` : '';
 
-                                const p1Win = outcome && outcome.result === 'p1';
-                                const p2Win = outcome && outcome.result === 'p2';
-
-                                let handicapStr = '';
-                                if (b.handicapTeam && b.handicapValue > 0) {
-                                    handicapStr = `<span class="block mt-1 text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded inline-block">Handicap: ${b.handicapTeam} +${b.handicapValue}</span>`;
-                                }
-
-                                let resultLine = '';
-                                if (outcome && (outcome.result === 'p1' || outcome.result === 'p2')) {
-                                    resultLine = `<div class="mt-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded">👑 ${outcome.winner} wins ${formatIDR(b.amount)} from ${outcome.loser}</div>`;
-                                } else if (outcome && outcome.result === 'push') {
-                                    resultLine = `<div class="mt-2 text-xs font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded">⚖️ Push — no payout (handicap tie)</div>`;
-                                } else if (!isFinished) {
-                                    resultLine = `<div class="mt-2 text-xs text-slate-400 italic">${isLive ? 'Live — not settled yet' : 'Pending result'}</div>`;
-                                }
-
-                                const editButton = isAdmin
-                                    ? `<button onclick="openEditBetModal(${m.id}, ${b.id})" class="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded font-medium transition">✏️ Edit</button>`
-                                    : ``;
-
-                                return `
-                                <li class="text-sm bg-slate-50 p-3 rounded-lg flex flex-col border border-slate-100">
-                                    <div class="flex justify-between items-start">
-                                        <div class="flex flex-col gap-0.5">
-                                            <span>${winName(b.p1, b.p1Choice, p1Win, p2Win)}</span>
-                                            <span class="text-slate-400 text-xs italic">vs</span>
-                                            <span>${winName(b.p2, b.p2Choice, p2Win, p1Win)}</span>
-                                        </div>
-                                        <div class="text-right flex flex-col items-end gap-2">
-                                            <span class="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">${formatIDR(b.amount)}</span>
-                                            ${editButton}
-                                        </div>
-                                    </div>
-                                    ${handicapStr}
-                                    ${resultLine}
-                                </li>`;
-                            }).join('')}
-                        </ul>
+                let actionsHTML = '';
+                const canPropose = viewer && m.status === 'Upcoming';
+                if (canPropose || isAdmin) {
+                    actionsHTML = `<div class="mt-4 flex gap-2">
+                        ${canPropose ? `<button onclick="openBetModal(${m.apiId})" class="flex-1 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 py-2 rounded-lg text-sm font-bold transition">Propose Bet</button>` : ''}
+                        ${isAdmin ? `<button onclick="openResultModal(${m.apiId})" class="flex-1 ${isFinished ? 'bg-slate-600 hover:bg-slate-700' : 'bg-blue-600 hover:bg-blue-700'} text-white py-2 rounded-lg text-sm font-bold transition">${isFinished ? 'Edit Result' : 'Set Result'}</button>` : ''}
                     </div>`;
                 }
 
-                let actionsHTML = '';
-                if (isAdmin) {
-                    actionsHTML = `
-                        <div class="mt-4 flex gap-2">
-                            <button onclick="openBetModal(${m.id})" class="flex-1 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 py-2 rounded-lg text-sm font-bold transition">Add Bet</button>
-                            <button onclick="openResultModal(${m.id})" class="flex-1 ${isFinished ? 'bg-slate-600 hover:bg-slate-700' : 'bg-blue-600 hover:bg-blue-700'} text-white py-2 rounded-lg text-sm font-bold transition">
-                                ${isFinished ? 'Edit Result' : 'Set Result'}
-                            </button>
-                        </div>`;
-                }
-
-                const liveRing = isLive ? 'ring-2 ring-red-200' : '';
-                const card = `
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between h-full ${liveRing}">
-                        <div>
-                            <div class="flex justify-between items-center mb-3 gap-2">
-                                <div class="flex flex-col gap-1">
-                                    ${phaseHTML}
-                                    <span class="text-xs text-slate-400 font-bold tracking-wider uppercase">${m.date || ''}</span>
-                                </div>
-                                ${scoreHTML}
-                            </div>
-                            <div class="flex justify-between items-center text-lg font-bold mb-2">
-                                <span class="w-2/5 text-right flex justify-end items-center">${homeFlagHTML}${m.home}</span>
-                                <span class="w-1/5 text-center text-slate-300 text-sm">vs</span>
-                                <span class="w-2/5 text-left flex justify-start items-center">${m.away}${awayFlagHTML}</span>
-                            </div>
-                            ${betsHTML}
+                return `<div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between h-full ${isLive ? 'ring-2 ring-red-200' : ''}">
+                    <div>
+                        <div class="flex justify-between items-center mb-3 gap-2">
+                            <div class="flex flex-col gap-1">${phaseHTML}<span class="text-xs text-slate-400 font-bold tracking-wider uppercase">${esc(m.date || '')}</span></div>
+                            ${scoreHTML}
                         </div>
-                        ${actionsHTML}
+                        <div class="flex justify-between items-center text-lg font-bold mb-2">
+                            <span class="w-2/5 text-right flex justify-end items-center">${flagImg(m.home, m.crestHome, 'home')}${esc(m.home)}</span>
+                            <span class="w-1/5 text-center text-slate-300 text-sm">vs</span>
+                            <span class="w-2/5 text-left flex justify-start items-center">${esc(m.away)}${flagImg(m.away, m.crestAway, 'away')}</span>
+                        </div>
+                        ${betsHTML}
                     </div>
-                `;
-                container.innerHTML += card;
-            });
+                    ${actionsHTML}
+                </div>`;
+            }).join('');
+        }
+
+        function renderInbox() {
+            const panel = document.getElementById('inbox-panel');
+            const list = document.getElementById('inbox-list');
+            const ids = S.inbox || [];
+            if (!viewer || ids.length === 0) { panel.classList.add('hidden'); return; }
+            panel.classList.remove('hidden');
+            list.innerHTML = ids.map(id => {
+                const b = (S.bets || []).find(x => x._id === id);
+                if (!b) return '';
+                const m = matchByApiId(b.matchApiId);
+                const teams = m ? `${esc(m.home)} vs ${esc(m.away)}` : 'match';
+                const hc = (b.handicapTeam && b.handicapValue > 0) ? ` \u00b7 Voor ${esc(b.handicapTeam)} +${b.handicapValue}` : '';
+                return `<li class="bg-white rounded-lg p-3 border border-amber-200">
+                    <div class="text-sm"><b>${esc(b.playerA)}</b> (${esc(b.choiceA)}) vs <b>you</b> (${esc(b.choiceB)}) \u2014 <b>${formatIDR(b.amount)}</b></div>
+                    <div class="text-xs text-slate-500 mt-0.5">${teams}${hc}</div>
+                    <div class="mt-2 flex gap-2">
+                        <button onclick="signBet('${b._id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 rounded">&#9997;&#65039; Agree &amp; sign</button>
+                        <button onclick="rejectBet('${b._id}')" class="bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold py-1.5 px-3 rounded">Reject</button>
+                    </div>
+                </li>`;
+            }).join('');
+        }
+
+        function renderTreasury() {
+            const body = document.getElementById('treasury-body');
+            const note = document.getElementById('treasury-note');
+            const table = body.closest('table');
+            if (!viewer) {
+                table.classList.add('hidden'); note.classList.remove('hidden');
+                note.innerText = 'Log in to view treasury balances.';
+                return;
+            }
+            table.classList.remove('hidden'); note.classList.add('hidden');
+            const rows = (S.accounts || []).slice().sort((a, b) => b.balance - a.balance);
+            if (rows.length === 0) { body.innerHTML = `<tr><td colspan="3" class="p-4 text-slate-400 italic text-center">No deposits recorded yet.</td></tr>`; return; }
+            body.innerHTML = rows.map(a => {
+                const net = a.balance - a.deposited;
+                const netColor = net > 0 ? 'text-emerald-600' : net < 0 ? 'text-red-500' : 'text-slate-400';
+                const netStr = net === 0 ? '' : `<span class="block text-[11px] ${netColor}">${net > 0 ? '+' : ''}${formatIDR(net)}</span>`;
+                const isMe = viewer && a.playerId === viewer._id;
+                return `<tr class="hover:bg-slate-50 transition ${isMe ? 'bg-blue-50/40' : ''}">
+                    <td class="p-3 font-bold text-slate-700">${esc(a.name)}${isMe ? ' <span class="text-[10px] text-blue-500">you</span>' : ''}</td>
+                    <td class="p-3 text-right text-slate-500">${formatIDR(a.deposited)}</td>
+                    <td class="p-3 text-right font-bold text-slate-800">${formatIDR(a.balance)}${netStr}</td>
+                </tr>`;
+            }).join('');
         }
 
         function renderScorers() {
             const el = document.getElementById('scorers-list');
-            if (!el) return;
-            if (!scorers || scorers.length === 0) {
-                el.innerHTML = `<li class="p-4 text-slate-400 italic text-center">No scorer data yet. Admin: tap “Fetch API Matches”.</li>`;
-                return;
-            }
+            const scorers = S.scorers || [];
+            if (scorers.length === 0) { el.innerHTML = `<li class="p-4 text-slate-400 italic text-center">No scorer data yet.</li>`; return; }
             el.innerHTML = scorers.map((s, i) => {
-                const rank = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
-                const crest = s.crest ? `<img src="${s.crest}" class="inline-block w-4 h-4 object-contain ml-1" alt="">` : '';
+                const rank = i === 0 ? '&#129351;' : i === 1 ? '&#129352;' : i === 2 ? '&#129353;' : `${i + 1}.`;
+                const crest = s.crest ? `<img src="${esc(s.crest)}" class="inline-block w-4 h-4 object-contain ml-1" alt="">` : '';
                 const assists = (s.assists != null && s.assists > 0) ? `<span class="text-slate-400 text-xs ml-2">${s.assists} A</span>` : '';
                 return `<li class="flex items-center justify-between p-3 hover:bg-slate-50">
-                    <span class="flex items-center gap-2 min-w-0">
-                        <span class="w-6 text-center text-slate-400 font-bold shrink-0">${rank}</span>
-                        <span class="truncate"><b class="text-slate-700">${s.name}</b> <span class="text-slate-400 text-xs">${s.team}</span>${crest}</span>
-                    </span>
-                    <span class="font-bold text-slate-800 shrink-0">${s.goals} ⚽${assists}</span>
-                </li>`;
+                    <span class="flex items-center gap-2 min-w-0"><span class="w-6 text-center text-slate-400 font-bold shrink-0">${rank}</span>
+                    <span class="truncate"><b class="text-slate-700">${esc(s.name)}</b> <span class="text-slate-400 text-xs">${esc(s.team)}</span>${crest}</span></span>
+                    <span class="font-bold text-slate-800 shrink-0">${s.goals} &#9917;${assists}</span></li>`;
             }).join('');
         }
 
         function renderStandings() {
             const el = document.getElementById('standings-container');
-            if (!el) return;
-            if (!standings || standings.length === 0) {
-                el.innerHTML = `<p class="text-slate-400 italic text-center">No standings data yet. Admin: tap “Fetch API Matches”.</p>`;
-                return;
-            }
+            const standings = S.standings || [];
+            if (standings.length === 0) { el.innerHTML = `<p class="text-slate-400 italic text-center">No standings data yet.</p>`; return; }
             el.innerHTML = standings.map(g => {
                 const label = (g.group || '').replace(/_/g, ' ').replace(/\bGROUP\b/i, 'Group');
-                const rows = g.table.map(r => `
-                    <tr class="border-t border-slate-100">
-                        <td class="py-1 pr-1 text-slate-400">${r.pos}</td>
-                        <td class="py-1 pr-2 truncate">${r.crest ? `<img src="${r.crest}" class="inline-block w-4 h-4 object-contain mr-1" alt="">` : ''}${r.team}</td>
-                        <td class="py-1 px-1 text-center text-slate-500">${r.played}</td>
-                        <td class="py-1 px-1 text-center text-slate-500">${r.gd > 0 ? '+' + r.gd : r.gd}</td>
-                        <td class="py-1 pl-1 text-center font-bold text-slate-800">${r.pts}</td>
-                    </tr>`).join('');
-                return `<div>
-                    <p class="font-bold text-slate-700 mb-1">${label}</p>
-                    <table class="w-full text-xs">
-                        <thead><tr class="text-slate-400">
-                            <th class="text-left font-medium pr-1">#</th>
-                            <th class="text-left font-medium">Team</th>
-                            <th class="font-medium px-1">P</th>
-                            <th class="font-medium px-1">GD</th>
-                            <th class="font-medium pl-1">Pts</th>
-                        </tr></thead>
-                        <tbody>${rows}</tbody>
-                    </table>
-                </div>`;
+                const rows = g.table.map(r => `<tr class="border-t border-slate-100">
+                    <td class="py-1 pr-1 text-slate-400">${r.pos}</td>
+                    <td class="py-1 pr-2 truncate">${r.crest ? `<img src="${esc(r.crest)}" class="inline-block w-4 h-4 object-contain mr-1" alt="">` : ''}${esc(r.team)}</td>
+                    <td class="py-1 px-1 text-center text-slate-500">${r.played}</td>
+                    <td class="py-1 px-1 text-center text-slate-500">${r.gd > 0 ? '+' + r.gd : r.gd}</td>
+                    <td class="py-1 pl-1 text-center font-bold text-slate-800">${r.pts}</td></tr>`).join('');
+                return `<div><p class="font-bold text-slate-700 mb-1">${esc(label)}</p>
+                    <table class="w-full text-xs"><thead><tr class="text-slate-400">
+                        <th class="text-left font-medium pr-1">#</th><th class="text-left font-medium">Team</th>
+                        <th class="font-medium px-1">P</th><th class="font-medium px-1">GD</th><th class="font-medium pl-1">Pts</th>
+                    </tr></thead><tbody>${rows}</tbody></table></div>`;
             }).join('');
         }
 
-        function renderLeaderboardAndDebts() {
-            const tbody = document.getElementById('leaderboard-body');
-            const debtsList = document.getElementById('debts-list');
-            tbody.innerHTML = '';
-            debtsList.innerHTML = '';
-
-            let stats = {};
-            let debts = {}; 
-            
-            participants.forEach(p => {
-                stats[p] = { name: p, net: 0 };
-                debts[p] = {};
-            });
-
-            matches.forEach(m => {
-                if (m.status === 'Finished' && m.homeScore !== null && m.awayScore !== null && m.bets) {
-                    m.bets.forEach(b => {
-                        const outcome = getBetOutcome(m, b);
-                        if (!outcome) return;
-                        if (outcome.result === 'p1') {
-                            stats[b.p1].net += b.amount;
-                            stats[b.p2].net -= b.amount;
-                            debts[b.p2][b.p1] = (debts[b.p2][b.p1] || 0) + b.amount;
-                            debts[b.p1][b.p2] = (debts[b.p1][b.p2] || 0) - b.amount;
-                        } else if (outcome.result === 'p2') {
-                            stats[b.p2].net += b.amount;
-                            stats[b.p1].net -= b.amount;
-                            debts[b.p1][b.p2] = (debts[b.p1][b.p2] || 0) + b.amount;
-                            debts[b.p2][b.p1] = (debts[b.p2][b.p1] || 0) - b.amount;
-                        }
-                        // 'push' => no money moves
-                    });
-                }
-            });
-
-            const sortedStats = Object.values(stats).sort((a, b) => b.net - a.net);
-
-            sortedStats.forEach((s, index) => {
-                const colorClass = s.net > 0 ? 'text-emerald-600' : (s.net < 0 ? 'text-red-500' : 'text-slate-500');
-                let medal = '';
-                if (s.net > 0) {
-                    medal = index === 0 ? '🥇 ' : index === 1 ? '🥈 ' : index === 2 ? '🥉 ' : '';
-                }
-                
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="p-4 font-bold text-slate-700">${medal}${s.name}</td>
-                        <td class="p-4 text-right font-bold ${colorClass}">${formatIDR(s.net)}</td>
-                    </tr>
-                `;
-            });
-
-            let hasDebts = false;
-            participants.forEach(debtor => {
-                for (const creditor in debts[debtor]) {
-                    if (debts[debtor][creditor] > 0) {
-                        hasDebts = true;
-                        debtsList.innerHTML += `
-                            <li class="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
-                                <span><span class="font-bold text-red-500">${debtor}</span> owes <span class="font-bold text-emerald-600">${creditor}</span></span>
-                                <span class="font-bold text-slate-700">${formatIDR(debts[debtor][creditor])}</span>
-                            </li>
-                        `;
-                    }
-                }
-            });
-
-            if (!hasDebts) {
-                debtsList.innerHTML = `<li class="text-slate-400 italic text-center py-2">No active debts. All squared up!</li>`;
-            }
-        }
-
-        function populatePlayerDropdowns() {
-            const html = `<option value="">-- Select Player --</option>` + 
-                         participants.map(p => `<option value="${p}">${p}</option>`).join('');
-            document.getElementById('player-home').innerHTML = html;
-            document.getElementById('player-away').innerHTML = html;
-        }
-
-        function openBetModal(matchId) {
-            if (!isAdmin) return;
-            const match = matches.find(m => m.id === matchId);
-            document.getElementById('bet-match-id').value = match.id;
-            document.getElementById('bet-id').value = ''; 
-            document.getElementById('bet-modal-title').innerText = "Add New Bet";
-            document.getElementById('delete-bet-btn').classList.add('hidden');
-            
-            document.getElementById('label-team-home').innerText = `Who picks ${match.home}?`;
-            document.getElementById('label-team-away').innerText = `Who picks ${match.away}?`;
-            
-            const hcSelect = document.getElementById('bet-handicap-team');
-            hcSelect.innerHTML = `
-                <option value="">No Handicap</option>
-                <option value="${match.home}">${match.home}</option>
-                <option value="${match.away}">${match.away}</option>
-            `;
-            
-            document.getElementById('bet-amount').value = '';
+        // ---------- BET ACTIONS ----------
+        function openBetModal(apiId) {
+            if (!viewer) return;
+            const m = matchByApiId(apiId);
+            if (!m) return;
+            document.getElementById('bet-match-id').value = apiId;
+            document.getElementById('bet-modal-title').innerText = `Propose \u00b7 ${m.home} vs ${m.away}`;
+            document.getElementById('bet-mychoice').innerHTML = `<option value="${esc(m.home)}">${esc(m.home)}</option><option value="${esc(m.away)}">${esc(m.away)}</option>`;
+            document.getElementById('bet-opponent').innerHTML = (S.players || [])
+                .filter(p => p.active && p._id !== viewer._id)
+                .map(p => `<option value="${p._id}">${esc(p.name)}</option>`).join('');
+            document.getElementById('bet-handicap-team').innerHTML =
+                `<option value="">No Handicap</option><option value="${esc(m.home)}">${esc(m.home)}</option><option value="${esc(m.away)}">${esc(m.away)}</option>`;
             document.getElementById('bet-handicap-value').value = 0;
-            
-            populatePlayerDropdowns();
+            document.getElementById('bet-amount').value = '';
+            const myBal = S.me ? S.me.balance : 0;
+            document.getElementById('bet-balance-note').innerHTML = `Your balance: <b>${formatIDR(myBal)}</b>. Open bets reduce how much you can still stake.`;
+            document.getElementById('bet-error').classList.add('hidden');
             document.getElementById('bet-modal').classList.remove('hidden');
         }
-
-        function openEditBetModal(matchId, betId) {
-            if (!isAdmin) return;
-            const match = matches.find(m => m.id === matchId);
-            const bet = match.bets.find(b => b.id === betId);
-            
-            document.getElementById('bet-match-id').value = match.id;
-            document.getElementById('bet-id').value = bet.id;
-            document.getElementById('bet-modal-title').innerText = "Edit Existing Bet";
-            document.getElementById('delete-bet-btn').classList.remove('hidden');
-            
-            document.getElementById('label-team-home').innerText = `Who picks ${match.home}?`;
-            document.getElementById('label-team-away').innerText = `Who picks ${match.away}?`;
-            
-            const hcSelect = document.getElementById('bet-handicap-team');
-            hcSelect.innerHTML = `
-                <option value="">No Handicap</option>
-                <option value="${match.home}">${match.home}</option>
-                <option value="${match.away}">${match.away}</option>
-            `;
-            
-            populatePlayerDropdowns();
-            
-            document.getElementById('player-home').value = bet.p1;
-            document.getElementById('player-away').value = bet.p2;
-            document.getElementById('bet-handicap-team').value = bet.handicapTeam;
-            document.getElementById('bet-handicap-value').value = bet.handicapValue;
-            document.getElementById('bet-amount').value = bet.amount;
-            
-            document.getElementById('bet-modal').classList.remove('hidden');
+        async function submitProposal() {
+            const apiId = parseInt(document.getElementById('bet-match-id').value, 10);
+            const myChoice = document.getElementById('bet-mychoice').value;
+            const opponentId = document.getElementById('bet-opponent').value;
+            const amount = parseInt(document.getElementById('bet-amount').value, 10);
+            const handicapTeam = document.getElementById('bet-handicap-team').value || null;
+            const handicapValue = parseFloat(document.getElementById('bet-handicap-value').value) || 0;
+            const errEl = document.getElementById('bet-error');
+            errEl.classList.add('hidden');
+            if (!opponentId) { errEl.innerText = 'Pick an opponent.'; errEl.classList.remove('hidden'); return; }
+            if (!amount || amount < 1000) { errEl.innerText = 'Minimum stake is Rp 1,000.'; errEl.classList.remove('hidden'); return; }
+            const { ok, data } = await api('/bet/propose', { method: 'POST', body: { matchApiId: apiId, opponentId, myChoice, amount, handicapTeam, handicapValue } });
+            if (ok) { closeModal('bet-modal'); await loadState(); }
+            else { errEl.innerText = data.error || 'Could not propose bet.'; errEl.classList.remove('hidden'); }
+        }
+        async function signBet(betId) {
+            const { ok, data } = await api('/bet/sign', { method: 'POST', body: { betId } });
+            if (ok) await loadState(); else alert(data.error || 'Could not sign.');
+        }
+        async function rejectBet(betId) {
+            if (!confirm('Reject this bet? It will be discarded.')) return;
+            const { ok, data } = await api('/bet/reject', { method: 'POST', body: { betId } });
+            if (ok) await loadState(); else alert(data.error || 'Could not reject.');
+        }
+        async function cancelBet(betId) {
+            if (!confirm('Cancel this proposal?')) return;
+            const { ok, data } = await api('/bet/cancel', { method: 'POST', body: { betId } });
+            if (ok) await loadState(); else alert(data.error || 'Could not cancel.');
         }
 
-        async function submitBet(e) {
-            e.preventDefault();
+        // ---------- TREASURER ----------
+        let syncCooldownTimer = null;
+        function startSyncCooldown(seconds) {
+            const btn = document.getElementById('btn-api-sync');
+            if (!btn) return;
+            if (syncCooldownTimer) clearInterval(syncCooldownTimer);
+            let remaining = Math.max(1, Math.ceil(seconds));
+            btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed');
+            const tick = () => {
+                if (remaining <= 0) { clearInterval(syncCooldownTimer); syncCooldownTimer = null; btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); btn.innerHTML = '&#11015;&#65039; Sync'; return; }
+                btn.innerText = `\u23f3 ${remaining}s`; remaining--;
+            };
+            tick(); syncCooldownTimer = setInterval(tick, 1000);
+        }
+        async function doSync() {
             if (!isAdmin) return;
-            
-            const matchId = parseInt(document.getElementById('bet-match-id').value);
-            const betId = document.getElementById('bet-id').value;
-            const p1 = document.getElementById('player-home').value;
-            const p2 = document.getElementById('player-away').value;
-            const amount = parseInt(document.getElementById('bet-amount').value);
-            const handicapTeam = document.getElementById('bet-handicap-team').value;
-            const handicapValue = parseFloat(document.getElementById('bet-handicap-value').value);
-
-            if (p1 === p2) {
-                alert("A player cannot bet against themselves!");
-                return;
-            }
-
-            const match = matches.find(m => m.id === matchId);
-
-            if (betId === '') {
-                match.bets.push({
-                    id: Date.now(),
-                    p1: p1,
-                    p1Choice: match.home,
-                    p2: p2,
-                    p2Choice: match.away,
-                    amount: amount,
-                    handicapTeam: handicapTeam,
-                    handicapValue: handicapValue || 0
-                });
-            } else {
-                const bet = match.bets.find(b => b.id === parseInt(betId));
-                bet.p1 = p1;
-                bet.p2 = p2;
-                bet.amount = amount;
-                bet.handicapTeam = handicapTeam;
-                bet.handicapValue = handicapValue || 0;
-            }
-
-            closeModal('bet-modal');
-            await saveData();
+            const btn = document.getElementById('btn-api-sync');
+            if (btn && btn.disabled) return;
+            showLoading(true);
+            const { ok, data } = await api('/admin/sync', { method: 'POST' });
+            showLoading(false);
+            if (data.rateLimited) { startSyncCooldown(data.wait || 60); alert(`football-data limit reached. Wait ~${data.wait || 60}s and try again.`); return; }
+            if (data.cached) { startSyncCooldown(data.wait || 15); await loadState(); return; }
+            if (!ok || !data.ok) { alert('Sync failed: ' + (data.error || 'unknown')); return; }
+            startSyncCooldown(15);
+            const statsNote = data.statsRefreshed ? `\nGolden Boot: ${data.scorers ?? 0} \u00b7 Standings: ${data.standings ?? 0} groups.` : '';
+            const settledNote = data.settled ? `\n${data.settled} bet(s) settled.` : '';
+            await loadState();
+            alert(`Synced! ${data.added} new fixtures, ${data.updated} updated.${settledNote}${statsNote}`);
         }
 
-        async function deleteBet() {
+        function openResultModal(apiId) {
             if (!isAdmin) return;
-            if (confirm("Are you sure you want to permanently delete this bet?")) {
-                const matchId = parseInt(document.getElementById('bet-match-id').value);
-                const betId = parseInt(document.getElementById('bet-id').value);
-                
-                const match = matches.find(m => m.id === matchId);
-                match.bets = match.bets.filter(b => b.id !== betId);
-                
-                closeModal('bet-modal');
-                await saveData();
-            }
-        }
-
-        function openResultModal(matchId) {
-            if (!isAdmin) return;
-            const match = matches.find(m => m.id === matchId);
-            document.getElementById('result-match-id').value = match.id;
-            document.getElementById('score-label-home').innerText = match.home;
-            document.getElementById('score-label-away').innerText = match.away;
-            document.getElementById('score-home').value = match.homeScore !== null ? match.homeScore : '';
-            document.getElementById('score-away').value = match.awayScore !== null ? match.awayScore : '';
+            const m = matchByApiId(apiId);
+            document.getElementById('result-match-id').value = apiId;
+            document.getElementById('score-label-home').innerText = m.home;
+            document.getElementById('score-label-away').innerText = m.away;
+            document.getElementById('score-home').value = m.homeScore != null ? m.homeScore : '';
+            document.getElementById('score-away').value = m.awayScore != null ? m.awayScore : '';
+            document.getElementById('result-error').classList.add('hidden');
             document.getElementById('result-modal').classList.remove('hidden');
         }
+        async function submitResult() {
+            const apiId = parseInt(document.getElementById('result-match-id').value, 10);
+            const homeScore = parseInt(document.getElementById('score-home').value, 10);
+            const awayScore = parseInt(document.getElementById('score-away').value, 10);
+            const errEl = document.getElementById('result-error');
+            if (isNaN(homeScore) || isNaN(awayScore)) { errEl.innerText = 'Enter both scores.'; errEl.classList.remove('hidden'); return; }
+            const { ok, data } = await api('/admin/result', { method: 'POST', body: { apiId, homeScore, awayScore } });
+            if (ok) { closeModal('result-modal'); await loadState(); if (data.settled) setTimeout(() => alert(`${data.settled} bet(s) settled.`), 100); }
+            else { errEl.innerText = data.error || 'Failed.'; errEl.classList.remove('hidden'); }
+        }
 
-        async function submitResult(e) {
-            e.preventDefault();
+        function openDepositModal() {
             if (!isAdmin) return;
-            const matchId = parseInt(document.getElementById('result-match-id').value);
-            const scoreHome = parseInt(document.getElementById('score-home').value);
-            const scoreAway = parseInt(document.getElementById('score-away').value);
-
-            const match = matches.find(m => m.id === matchId);
-            match.homeScore = scoreHome;
-            match.awayScore = scoreAway;
-            match.status = 'Finished';
-
-            closeModal('result-modal');
-            await saveData();
+            document.getElementById('deposit-player').innerHTML = (S.players || []).filter(p => p.active)
+                .map(p => `<option value="${p._id}">${esc(p.name)}</option>`).join('');
+            document.getElementById('deposit-amount').value = '';
+            document.getElementById('deposit-note').value = '';
+            document.getElementById('deposit-error').classList.add('hidden');
+            document.getElementById('deposit-modal').classList.remove('hidden');
+        }
+        async function submitDeposit() {
+            const playerId = document.getElementById('deposit-player').value;
+            const amount = parseInt(document.getElementById('deposit-amount').value, 10);
+            const note = document.getElementById('deposit-note').value;
+            const errEl = document.getElementById('deposit-error');
+            if (!amount) { errEl.innerText = 'Enter an amount.'; errEl.classList.remove('hidden'); return; }
+            const { ok, data } = await api('/admin/deposit', { method: 'POST', body: { playerId, amount, note } });
+            if (ok) { closeModal('deposit-modal'); await loadState(); }
+            else { errEl.innerText = data.error || 'Failed.'; errEl.classList.remove('hidden'); }
         }
 
-        function closeModal(id) {
-            document.getElementById(id).classList.add('hidden');
-            if (id === 'login-modal') {
-                document.getElementById('admin-password-input').value = '';
-                document.getElementById('login-error').classList.add('hidden');
-            }
+        function openPlayerModal() {
+            if (!isAdmin) return;
+            document.getElementById('player-name').value = '';
+            document.getElementById('player-admin').checked = false;
+            document.getElementById('player-error').classList.add('hidden');
+            document.getElementById('player-modal').classList.remove('hidden');
+        }
+        async function submitPlayer() {
+            const name = document.getElementById('player-name').value.trim();
+            const role = document.getElementById('player-admin').checked ? 'admin' : 'member';
+            const errEl = document.getElementById('player-error');
+            if (!name) { errEl.innerText = 'Enter a name.'; errEl.classList.remove('hidden'); return; }
+            const { ok, data } = await api('/admin/create-player', { method: 'POST', body: { name, role } });
+            if (ok) { closeModal('player-modal'); await loadState(); }
+            else { errEl.innerText = data.error || 'Failed.'; errEl.classList.remove('hidden'); }
         }
 
-        // Start App
-        init();
+        async function showHistory() {
+            if (!viewer) return;
+            const body = document.getElementById('history-body');
+            body.innerHTML = '<p class="text-slate-400 italic text-center py-4">Loading&hellip;</p>';
+            document.getElementById('history-modal').classList.remove('hidden');
+            const { ok, data } = await api('/ledger', { method: 'POST' });
+            if (!ok) { body.innerHTML = `<p class="text-red-500 text-center py-4">${esc(data.error || 'Failed.')}</p>`; return; }
+            const rows = data.ledger || [];
+            if (rows.length === 0) { body.innerHTML = '<p class="text-slate-400 italic text-center py-4">No transactions yet.</p>'; return; }
+            const label = { deposit: '&#128176; Deposit', bet_win: '&#128081; Bet won', bet_loss: '&#128184; Bet lost', adjustment: '&#9881;&#65039; Adjustment' };
+            body.innerHTML = `<ul class="divide-y divide-slate-100">${rows.map(r => `
+                <li class="py-2 flex justify-between items-center">
+                    <span><span class="font-medium">${label[r.type] || r.type}</span>${r.note ? ` <span class="text-slate-400 text-xs">${esc(r.note)}</span>` : ''}<span class="block text-[11px] text-slate-400">${fmtTime(r.at)}</span></span>
+                    <span class="text-right"><b class="${r.amount >= 0 ? 'text-emerald-600' : 'text-red-500'}">${r.amount >= 0 ? '+' : ''}${formatIDR(r.amount)}</b><span class="block text-[11px] text-slate-400">bal ${formatIDR(r.balanceAfter)}</span></span>
+                </li>`).join('')}</ul>`;
+        }
+
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        // ---------- START ----------
+        setupFilters();
+        loadState();
     </script>
 </body>
 </html>

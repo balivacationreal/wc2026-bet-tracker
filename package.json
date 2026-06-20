@@ -1,0 +1,24 @@
+{
+  "name": "wc2026-bet-tracker",
+  "version": "1.0.0",
+  "description": "A lightweight, single-page web app for tracking 1-on-1 football bets in IDR (Indonesian Rupiah) among a group of friends during FIFA World Cup 2026.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/balivacationreal/wc2026-bet-tracker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/balivacationreal/wc2026-bet-tracker/issues"
+  },
+  "homepage": "https://github.com/balivacationreal/wc2026-bet-tracker#readme",
+  "dependencies": {
+    "convex": "^1.41.0"
+  }
+}
