@@ -61,8 +61,11 @@
                         <button data-filter="finished" class="filter-chip px-3 py-1.5 rounded-full transition">Finished</button>
                         <button data-filter="bets"     class="filter-chip px-3 py-1.5 rounded-full transition">&#11088; With Bets</button>
                     </div>
-                    <input id="search-input" type="text" oninput="onSearch(this.value)" placeholder="Search team&hellip;"
-                        class="border-slate-300 border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-44">
+                    <div class="relative w-full sm:w-44">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path stroke-linecap="round" d="M21 21l-4.3-4.3"></path></svg>
+                        <input id="search-input" type="text" oninput="onSearch(this.value)" placeholder="Search team&hellip;"
+                            class="border-slate-300 border rounded-lg pl-9 pr-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full">
+                    </div>
                 </div>
 
                 <p id="match-count" class="text-xs text-slate-400 -mt-2"></p>
@@ -89,12 +92,15 @@
                     <p id="treasury-note" class="hidden p-4 text-slate-400 italic text-center text-sm"></p>
                 </div>
 
-                <h2 class="text-xl font-bold text-slate-800 border-b pb-2 mt-8 flex items-center gap-2">&#128099; Golden Boot</h2>
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <ul id="scorers-list" class="divide-y divide-slate-100 text-sm">
+                <details class="bg-white rounded-xl shadow-sm border border-slate-200 mt-8 group" open>
+                    <summary class="cursor-pointer p-4 font-bold text-slate-800 select-none flex items-center justify-between">
+                        <span>&#128099; Golden Boot</span>
+                        <span class="text-slate-400 text-xs group-open:rotate-180 transition">&#9660;</span>
+                    </summary>
+                    <ul id="scorers-list" class="divide-y divide-slate-100 text-sm border-t border-slate-100">
                         <li class="p-4 text-slate-400 italic text-center">No scorer data yet.</li>
                     </ul>
-                </div>
+                </details>
 
                 <details class="bg-white rounded-xl shadow-sm border border-slate-200 mt-8 group">
                     <summary class="cursor-pointer p-4 font-bold text-slate-800 select-none flex items-center justify-between">
@@ -295,6 +301,18 @@
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const formatIDR = n => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0);
         const fmtTime = ms => { try { return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(ms)); } catch { return ''; } };
+        // Kickoff in the viewer's own timezone, with an explicit zone label (falls back to the stored string).
+        function formatKickoff(m) {
+            if (m.utcDate) {
+                const d = new Date(m.utcDate);
+                if (!isNaN(d)) {
+                    try {
+                        return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZoneName: 'short' }).format(d);
+                    } catch (e) {}
+                }
+            }
+            return m.date || '';
+        }
 
         function showLoading(on) { document.getElementById('loading-indicator').classList.toggle('hidden', !on); }
 
@@ -591,7 +609,7 @@
                 return `<div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between h-full ${isLive ? 'ring-2 ring-red-200' : ''}">
                     <div>
                         <div class="flex justify-between items-center mb-3 gap-2">
-                            <div class="flex flex-col gap-1">${phaseHTML}<span class="text-xs text-slate-400 font-bold tracking-wider uppercase">${esc(m.date || '')}</span></div>
+                            <div class="flex flex-col gap-1">${phaseHTML}<span class="text-xs text-slate-400 font-bold tracking-wider uppercase">${esc(formatKickoff(m))}</span></div>
                             ${scoreHTML}
                         </div>
                         <div class="flex justify-between items-center text-lg font-bold mb-2">
