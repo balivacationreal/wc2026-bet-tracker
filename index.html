@@ -92,6 +92,14 @@
                     <p id="treasury-note" class="hidden p-4 text-slate-400 italic text-center text-sm"></p>
                 </div>
 
+                <div id="debts-card" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="px-4 pt-3 pb-1 border-b border-slate-100">
+                        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Who owes whom</div>
+                        <div class="text-[11px] text-slate-400">Net of settled head-to-head bets &middot; already reflected in balances above</div>
+                    </div>
+                    <ul id="debts-list" class="divide-y divide-slate-100 text-sm"></ul>
+                </div>
+
                 <details class="bg-white rounded-xl shadow-sm border border-slate-200 mt-8 group" open>
                     <summary class="cursor-pointer p-4 font-bold text-slate-800 select-none flex items-center justify-between">
                         <span>&#128099; Golden Boot</span>
@@ -478,6 +486,7 @@
             renderInbox();
             renderMatches();
             renderTreasury();
+            renderDebts();
             renderScorers();
             renderStandings();
         }
@@ -670,6 +679,52 @@
                     <td class="p-3 text-right font-bold text-slate-800">${formatIDR(a.balance)}${netStr}</td>
                 </tr>`;
             }).join('');
+        }
+
+        // Pairwise net of settled (non-push) head-to-head bets → "X owes Y: Rp Z".
+        function renderDebts() {
+            const card = document.getElementById('debts-card');
+            const list = document.getElementById('debts-list');
+            if (!viewer) { card.classList.add('hidden'); return; }
+            card.classList.remove('hidden');
+
+            const nameById = {};
+            (S.players || []).forEach(p => { nameById[p._id] = p.name; });
+
+            // won[winnerId][loserId] = total amount won across settled bets
+            const won = {};
+            (S.bets || []).forEach(b => {
+                if (b.status !== 'settled' || b.outcome === 'push' || !b.winnerId) return;
+                const w = b.winnerId;
+                const l = (b.winnerId === b.playerAId) ? b.playerBId : b.playerAId;
+                won[w] = won[w] || {};
+                won[w][l] = (won[w][l] || 0) + b.amount;
+            });
+
+            const debts = [];
+            const seen = {};
+            Object.keys(won).forEach(a => {
+                Object.keys(won[a]).forEach(b => {
+                    const key = [a, b].sort().join('|');
+                    if (seen[key]) return;
+                    seen[key] = true;
+                    const aFromB = (won[a] && won[a][b]) || 0;
+                    const bFromA = (won[b] && won[b][a]) || 0;
+                    const net = aFromB - bFromA;
+                    if (net > 0) debts.push({ debtor: b, creditor: a, amount: net });
+                    else if (net < 0) debts.push({ debtor: a, creditor: b, amount: -net });
+                });
+            });
+
+            if (debts.length === 0) {
+                list.innerHTML = `<li class="p-4 text-slate-400 italic text-center">No settled bets yet &mdash; nobody owes anyone.</li>`;
+                return;
+            }
+            debts.sort((x, y) => y.amount - x.amount);
+            list.innerHTML = debts.map(d => `<li class="p-3 flex items-center justify-between hover:bg-slate-50 transition">
+                <span class="text-slate-700"><b>${esc(nameById[d.debtor] || '?')}</b> <span class="text-slate-400 font-medium">owes</span> <b>${esc(nameById[d.creditor] || '?')}</b></span>
+                <span class="font-bold text-slate-800">${formatIDR(d.amount)}</span>
+            </li>`).join('');
         }
 
         function renderScorers() {
