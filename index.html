@@ -48,10 +48,20 @@
                     <ul id="inbox-list" class="space-y-3"></ul>
                 </div>
 
+                <details id="bracket-panel" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 group" open>
+                    <summary class="cursor-pointer p-4 font-bold text-slate-800 select-none flex items-center justify-between">
+                        <span>&#127942; Knockout Bracket</span>
+                        <span class="text-slate-400 text-xs group-open:rotate-180 transition">&#9660;</span>
+                    </summary>
+                    <div id="bracket-body" class="px-4 pb-4 overflow-auto max-h-[30rem]"></div>
+                </details>
+
                 <div class="flex justify-between items-center border-b pb-2">
                     <h2 class="text-xl font-bold text-slate-800">Fixtures &amp; Bets</h2>
                     <span id="auth-status-badge" class="text-xs font-bold px-2 py-1 bg-slate-200 text-slate-600 rounded-md uppercase tracking-wide">Guest</span>
                 </div>
+
+                <div id="stage-tabs" class="hidden flex flex-wrap gap-2"></div>
 
                 <div class="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
                     <div id="filter-chips" class="flex flex-wrap gap-2 text-xs font-bold">
@@ -302,8 +312,14 @@
         let S = { players: [], matches: [], bets: [], accounts: [], scorers: [], standings: [], inbox: [], me: null };
         let betsByMatch = {};
         let currentFilter = 'all';
+        let currentStage = null;        // selected stage tab: a KO stage key or 'ARCHIVE'
         let searchTerm = '';
         let refreshTimer = null;
+
+        // Knockout rounds, in bracket order. Anything not in this set is treated as "Archive" (group stage).
+        const KO_ORDER = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'THIRD_PLACE', 'FINAL'];
+        const KO_SET = new Set(KO_ORDER);
+        const BRACKET_COLS = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'FINAL'];
 
         // ---------- HELPERS ----------
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -352,6 +368,12 @@
             if (code) return `<img src="https://flagcdn.com/w40/${code}.png" alt="" class="inline-block w-6 h-auto ${margin} rounded-sm shadow-sm">`;
             if (crest) return `<img src="${esc(crest)}" alt="" class="inline-block w-6 h-6 ${margin} object-contain">`;
             return "";
+        }
+        function flagMini(name, crest) {
+            const code = flags[name];
+            if (code) return `<img src="https://flagcdn.com/w20/${code}.png" alt="" class="inline-block w-4 h-auto rounded-sm shrink-0">`;
+            if (crest) return `<img src="${esc(crest)}" alt="" class="inline-block w-4 h-4 object-contain shrink-0">`;
+            return `<span class="inline-block w-4 shrink-0"></span>`;
         }
         function phaseLabel(m) {
             if (m.group) return m.group.replace(/_/g, ' ').replace(/\bGROUP\b/i, 'Group');
@@ -483,12 +505,102 @@
 
         // ---------- RENDER ----------
         function renderApp() {
+            ensureStage();
             renderInbox();
+            renderStageTabs();
+            renderBracket();
             renderMatches();
             renderTreasury();
             renderDebts();
             renderScorers();
             renderStandings();
+        }
+
+        // ---------- STAGE TABS (Round of 32 focus + Archive) ----------
+        function stageTabKeys() {
+            const present = KO_ORDER.filter(s => (S.matches || []).some(m => m.stage === s));
+            const keys = present.slice();
+            if ((S.matches || []).some(m => !KO_SET.has(m.stage))) keys.push('ARCHIVE');
+            return keys;
+        }
+        function pickDefaultStage() {
+            const present = KO_ORDER.filter(s => (S.matches || []).some(m => m.stage === s));
+            // The "current" round = earliest knockout stage that still has a match to be played.
+            for (const s of present) {
+                if ((S.matches || []).some(m => m.stage === s && m.status !== 'Finished')) return s;
+            }
+            if (present.length) return present[present.length - 1];   // else latest round present
+            return 'ARCHIVE';                                          // no knockouts yet
+        }
+        function ensureStage() {
+            const keys = stageTabKeys();
+            if (keys.length === 0) { currentStage = null; return; }
+            if (!currentStage || !keys.includes(currentStage)) currentStage = pickDefaultStage();
+        }
+        function stageLabel(k) {
+            return k === 'ARCHIVE' ? '\uD83D\uDDC4\uFE0F Archive' : (STAGE_LABELS[k] || k);
+        }
+        function stagePlain(k) {
+            return k === 'ARCHIVE' ? 'Archive' : (STAGE_LABELS[k] || k || 'this view');
+        }
+        function renderStageTabs() {
+            const el = document.getElementById('stage-tabs');
+            const keys = stageTabKeys();
+            if (keys.length <= 1) { el.innerHTML = ''; el.classList.add('hidden'); return; }
+            el.classList.remove('hidden');
+            el.innerHTML = keys.map(k => {
+                const active = k === currentStage;
+                return `<button onclick="selectStage('${k}')" class="px-3 py-1.5 rounded-full text-xs font-bold transition ${active ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">${stageLabel(k)}</button>`;
+            }).join('');
+        }
+        function selectStage(k) {
+            currentStage = k;
+            renderStageTabs();
+            renderMatches();
+        }
+
+        // ---------- BRACKET CHART ----------
+        function koCellTeamRow(name, crest, score, show, win, lose) {
+            return `<div class="flex items-center justify-between gap-1.5 ${win ? 'font-bold text-slate-900' : lose ? 'text-slate-400' : 'text-slate-700'}">
+                <span class="flex items-center gap-1.5 min-w-0">${flagMini(name, crest)}<span class="truncate text-xs">${esc(name)}</span></span>
+                <span class="text-xs tabular-nums shrink-0">${show ? (score ?? 0) : ''}</span>
+            </div>`;
+        }
+        function koCell(m) {
+            const fin = m.status === 'Finished', live = m.status === 'Live', show = fin || live;
+            const hw = fin && m.homeScore > m.awayScore, aw = fin && m.awayScore > m.homeScore;
+            const status = fin ? 'FT' : live ? (m.minute != null ? m.minute + "'" : 'LIVE') : (m.date || '');
+            const statusCls = live ? 'text-red-600 font-bold' : 'text-slate-400';
+            const sel = currentStage === m.stage ? 'ring-2 ring-blue-300' : '';
+            return `<button onclick="selectStage('${m.stage}')" title="Show this round below"
+                class="w-full text-left bg-slate-50 hover:bg-blue-50 border border-slate-200 rounded-md p-2 transition ${sel}">
+                ${koCellTeamRow(m.home, m.crestHome, m.homeScore, show, hw, aw)}
+                ${koCellTeamRow(m.away, m.crestAway, m.awayScore, show, aw, hw)}
+                <div class="text-[10px] mt-1 ${statusCls} truncate">${esc(status)}</div>
+            </button>`;
+        }
+        function renderBracket() {
+            const panel = document.getElementById('bracket-panel');
+            const body = document.getElementById('bracket-body');
+            const present = KO_ORDER.filter(s => (S.matches || []).some(m => m.stage === s));
+            if (present.length === 0) { panel.classList.add('hidden'); return; }
+            panel.classList.remove('hidden');
+
+            const columns = BRACKET_COLS.filter(s => present.includes(s)).map(s => {
+                const ms = (S.matches || []).filter(m => m.stage === s).sort((a, b) => getMatchTime(a) - getMatchTime(b));
+                return `<div class="shrink-0 w-44">
+                    <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2 text-center">${esc(STAGE_LABELS[s] || s)} <span class="text-slate-300">(${ms.length})</span></div>
+                    <div class="space-y-2">${ms.map(koCell).join('')}</div>
+                </div>`;
+            });
+            if (present.includes('THIRD_PLACE')) {
+                const ms = (S.matches || []).filter(m => m.stage === 'THIRD_PLACE');
+                columns.push(`<div class="shrink-0 w-44">
+                    <div class="text-[11px] font-bold text-amber-600 uppercase tracking-wide mb-2 text-center">3rd place</div>
+                    <div class="space-y-2">${ms.map(koCell).join('')}</div>
+                </div>`);
+            }
+            body.innerHTML = `<div class="flex gap-3 items-start min-w-min pt-1">${columns.join('')}</div>`;
         }
 
         function setupFilters() {
@@ -507,6 +619,8 @@
 
         function getVisibleMatches() {
             let list = (S.matches || []).slice().sort((a, b) => getMatchTime(a) - getMatchTime(b));
+            if (currentStage === 'ARCHIVE') list = list.filter(m => !KO_SET.has(m.stage));
+            else if (currentStage) list = list.filter(m => m.stage === currentStage);
             if (currentFilter === 'live') list = list.filter(m => m.status === 'Live');
             else if (currentFilter === 'upcoming') list = list.filter(m => m.status === 'Upcoming');
             else if (currentFilter === 'finished') list = list.filter(m => m.status === 'Finished');
@@ -577,14 +691,17 @@
             const container = document.getElementById('matches-container');
             const visible = getVisibleMatches();
             const countEl = document.getElementById('match-count');
-            if (countEl) countEl.innerText = `Showing ${visible.length} of ${(S.matches || []).length} matches`;
+            if (countEl) {
+                const scope = currentStage ? ` in ${stagePlain(currentStage)}` : '';
+                countEl.innerText = `Showing ${visible.length} of ${(S.matches || []).length} matches${scope}`;
+            }
 
             if ((S.matches || []).length === 0) {
                 container.innerHTML = `<p class="col-span-2 text-slate-500 p-4 bg-white rounded-lg border border-slate-200">No fixtures yet.${isAdmin ? ' Tap <b>Sync</b> to load the schedule.' : ' The treasurer needs to sync the schedule.'}</p>`;
                 return;
             }
             if (visible.length === 0) {
-                container.innerHTML = `<p class="col-span-2 text-slate-400 italic p-6 text-center bg-white rounded-xl border border-slate-200">No matches match this view.</p>`;
+                container.innerHTML = `<p class="col-span-2 text-slate-400 italic p-6 text-center bg-white rounded-xl border border-slate-200">No matches in ${esc(stagePlain(currentStage))} match the current filter.</p>`;
                 return;
             }
 
