@@ -140,13 +140,24 @@ export const upsertMatches = internalMutation({
 });
 
 export const setMatchResult = internalMutation({
-  args: { actorId: v.id("players"), apiId: v.number(), homeScore: v.number(), awayScore: v.number() },
-  handler: async (ctx, { actorId, apiId, homeScore, awayScore }) => {
+  args: {
+    actorId: v.id("players"), apiId: v.number(),
+    homeScore: v.number(), awayScore: v.number(),
+    winner: v.optional(v.union(v.string(), v.null())), // "HOME" | "AWAY" | null (auto)
+  },
+  handler: async (ctx, { actorId, apiId, homeScore, awayScore, winner }) => {
     const actor = await ctx.db.get(actorId);
     if (!actor || actor.role !== "admin") throw new Error("Treasurer only.");
     const match = await getMatchByApiId(ctx, apiId);
     if (!match) throw new Error("Match not found.");
-    await ctx.db.patch(match._id, { homeScore, awayScore, status: "Finished" });
+    // Manual entry: treat the entered score as both the displayed and the 90-min basis.
+    // Overall winner: use the treasurer's choice if given, else derive from the score.
+    const derived = homeScore > awayScore ? "HOME" : awayScore > homeScore ? "AWAY" : "DRAW";
+    const finalWinner = winner === "HOME" || winner === "AWAY" ? winner : derived;
+    await ctx.db.patch(match._id, {
+      homeScore, awayScore, regHome: homeScore, regAway: awayScore,
+      winner: finalWinner, status: "Finished",
+    });
     const settled = await settleAll(ctx);
     return { ok: true, settled };
   },

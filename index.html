@@ -182,6 +182,10 @@
                     <label class="block text-sm font-bold text-slate-700 mb-1">Handicap goals (e.g. 0.5, 1, 1.5)</label>
                     <input type="number" id="bet-handicap-value" min="0" step="0.5" value="0" class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
+                <div class="mb-4 bg-slate-50 border border-slate-200 rounded-lg p-3 text-[11px] text-slate-500 leading-relaxed">
+                    <b class="text-slate-600">With voor</b> &rarr; settled on the <b>90-minute</b> score only.<br>
+                    <b class="text-slate-600">No voor</b> &rarr; settled on the <b>final result</b>, including extra time &amp; penalties (whoever advances).
+                </div>
                 <div class="mb-6 border-t pt-4 border-slate-100">
                     <label class="block text-sm font-bold text-slate-700 mb-1">Stake (IDR)</label>
                     <input type="number" id="bet-amount" min="1000" step="1000" class="w-full border-slate-300 border rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. 20000">
@@ -214,8 +218,19 @@
                     </div>
                 </div>
                 <p id="result-error" class="text-red-500 text-xs mb-3 hidden"></p>
+
+                <div id="result-advancer-wrap" class="hidden mb-4 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Advanced to next round <span class="font-normal text-slate-400">(for no-voor bets)</span></label>
+                    <select id="result-advancer" class="w-full border-slate-300 border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">Auto (from the score)</option>
+                        <option value="HOME"></option>
+                        <option value="AWAY"></option>
+                    </select>
+                    <p class="text-[10px] text-slate-400 mt-1">Use this when a knockout match is level after 90' and decided by extra time or penalties.</p>
+                </div>
+
                 <button onclick="submitResult()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition">Save result &amp; settle</button>
-                <p class="text-[11px] text-slate-400 mt-3 text-center">Saving a final score settles every agreed bet on this match and moves money in the treasury.</p>
+                <p class="text-[11px] text-slate-400 mt-3 text-center">Voor bets settle on the score you enter (90'); no-voor bets follow whoever advanced.</p>
             </div>
         </div>
     </div>
@@ -319,7 +334,6 @@
         // Knockout rounds, in bracket order. Anything not in this set is treated as "Archive" (group stage).
         const KO_ORDER = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'THIRD_PLACE', 'FINAL'];
         const KO_SET = new Set(KO_ORDER);
-        const BRACKET_COLS = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'FINAL'];
 
         // ---------- HELPERS ----------
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -559,48 +573,102 @@
             renderMatches();
         }
 
-        // ---------- BRACKET CHART ----------
-        function koCellTeamRow(name, crest, score, show, win, lose) {
-            return `<div class="flex items-center justify-between gap-1.5 ${win ? 'font-bold text-slate-900' : lose ? 'text-slate-400' : 'text-slate-700'}">
-                <span class="flex items-center gap-1.5 min-w-0">${flagMini(name, crest)}<span class="truncate text-xs">${esc(name)}</span></span>
-                <span class="text-xs tabular-nums shrink-0">${show ? (score ?? 0) : ''}</span>
-            </div>`;
+        // ---------- BRACKET CHART (connected tree) ----------
+        // How a knockout result was decided, for display on cards.
+        function decidedLabel(m) {
+            if (m.decidedBy === 'PENALTY_SHOOTOUT') return (m.penHome != null && m.penAway != null) ? `pens ${m.penHome}-${m.penAway}` : 'pens';
+            if (m.decidedBy === 'EXTRA_TIME') return 'AET';
+            return '';
         }
-        function koCell(m) {
+
+        const BK_P = 52, BK_BOX_W = 122, BK_BOX_H = 46, BK_PITCH = 148, BK_TOP = 30;
+        const bkColX = c => c * BK_PITCH;
+        const bkYC = (r, i) => BK_TOP + BK_P * Math.pow(2, r) * (i + 0.5);
+        const BK_FINAL_Y = bkYC(3, 0);
+        const BK_W = bkColX(8) + BK_BOX_W;
+        const BK_H = BK_TOP + BK_P * 8 + 90;
+
+        function bracketBoxHTML(m, col, yC) {
+            const left = bkColX(col), top = yC - BK_BOX_H / 2;
+            const style = `position:absolute;left:${left}px;top:${top}px;width:${BK_BOX_W}px;height:${BK_BOX_H}px;`;
+            if (!m) {
+                return `<div style="${style}" class="rounded-md border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center text-[10px] text-slate-300 font-bold select-none">TBD</div>`;
+            }
             const fin = m.status === 'Finished', live = m.status === 'Live', show = fin || live;
-            const hw = fin && m.homeScore > m.awayScore, aw = fin && m.awayScore > m.homeScore;
-            const status = fin ? 'FT' : live ? (m.minute != null ? m.minute + "'" : 'LIVE') : (m.date || '');
-            const statusCls = live ? 'text-red-600 font-bold' : 'text-slate-400';
-            const sel = currentStage === m.stage ? 'ring-2 ring-blue-300' : '';
-            return `<button onclick="selectStage('${m.stage}')" title="Show this round below"
-                class="w-full text-left bg-slate-50 hover:bg-blue-50 border border-slate-200 rounded-md p-2 transition ${sel}">
-                ${koCellTeamRow(m.home, m.crestHome, m.homeScore, show, hw, aw)}
-                ${koCellTeamRow(m.away, m.crestAway, m.awayScore, show, aw, hw)}
-                <div class="text-[10px] mt-1 ${statusCls} truncate">${esc(status)}</div>
+            const winSide = m.winner || (fin ? (m.homeScore > m.awayScore ? 'HOME' : m.awayScore > m.homeScore ? 'AWAY' : 'DRAW') : null);
+            const hw = winSide === 'HOME', aw = winSide === 'AWAY';
+            const row = (nm, cr, sc, win, lose) => `<div class="flex items-center justify-between gap-1 px-1.5 ${win ? 'font-bold text-slate-900' : lose ? 'text-slate-400' : 'text-slate-700'}">
+                <span class="flex items-center gap-1 min-w-0">${flagMini(nm, cr)}<span class="truncate text-[11px] leading-tight">${esc(nm)}</span></span>
+                <span class="text-[11px] tabular-nums shrink-0">${show ? (sc ?? 0) : ''}</span></div>`;
+            const ring = currentStage === m.stage ? 'ring-1 ring-blue-300' : '';
+            const bd = live ? 'border-red-300' : 'border-slate-200';
+            return `<button onclick="selectStage('${m.stage}')" style="${style}" title="Show this round below"
+                class="rounded-md border ${bd} ${ring} bg-white hover:bg-blue-50 shadow-sm flex flex-col justify-center gap-0.5 overflow-hidden text-left">
+                ${row(m.home, m.crestHome, m.homeScore, fin && hw, fin && aw)}
+                ${row(m.away, m.crestAway, m.awayScore, fin && aw, fin && hw)}
             </button>`;
         }
+
+        function bkConnectors() {
+            const paths = [];
+            // Left side: R32(0)->R16(1)->QF(2)->SF(3); each next slot fed by two previous slots.
+            [[0, 1], [1, 2], [2, 3]].forEach(([cr, nr]) => {
+                const nextSlots = 4 >> cr;
+                for (let j = 0; j < nextSlots; j++) {
+                    const fy1 = bkYC(cr, 2 * j), fy2 = bkYC(cr, 2 * j + 1), ty = bkYC(nr, j);
+                    const fx = bkColX(cr) + BK_BOX_W, tx = bkColX(nr), mx = (fx + tx) / 2;
+                    paths.push(`M ${fx} ${fy1} H ${mx} V ${ty} H ${tx}`);
+                    paths.push(`M ${fx} ${fy2} H ${mx} V ${ty}`);
+                }
+            });
+            paths.push(`M ${bkColX(3) + BK_BOX_W} ${BK_FINAL_Y} H ${bkColX(4)}`);            // left SF -> Final
+            // Right side (mirrored): R32(8)->R16(7)->QF(6)->SF(5), lines run toward centre.
+            [[8, 7, 0, 1], [7, 6, 1, 2], [6, 5, 2, 3]].forEach(([fc, tc, fr, tr]) => {
+                const nextSlots = 4 >> fr;
+                for (let j = 0; j < nextSlots; j++) {
+                    const fy1 = bkYC(fr, 2 * j), fy2 = bkYC(fr, 2 * j + 1), ty = bkYC(tr, j);
+                    const fx = bkColX(fc), tx = bkColX(tc) + BK_BOX_W, mx = (fx + tx) / 2;
+                    paths.push(`M ${fx} ${fy1} H ${mx} V ${ty} H ${tx}`);
+                    paths.push(`M ${fx} ${fy2} H ${mx} V ${ty}`);
+                }
+            });
+            paths.push(`M ${bkColX(5)} ${BK_FINAL_Y} H ${bkColX(4) + BK_BOX_W}`);            // right SF -> Final
+            return paths;
+        }
+
         function renderBracket() {
             const panel = document.getElementById('bracket-panel');
             const body = document.getElementById('bracket-body');
-            const present = KO_ORDER.filter(s => (S.matches || []).some(m => m.stage === s));
-            if (present.length === 0) { panel.classList.add('hidden'); return; }
+            const anyKO = KO_ORDER.some(s => (S.matches || []).some(m => m.stage === s));
+            if (!anyKO) { panel.classList.add('hidden'); return; }
             panel.classList.remove('hidden');
 
-            const columns = BRACKET_COLS.filter(s => present.includes(s)).map(s => {
-                const ms = (S.matches || []).filter(m => m.stage === s).sort((a, b) => getMatchTime(a) - getMatchTime(b));
-                return `<div class="shrink-0 w-44">
-                    <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2 text-center">${esc(STAGE_LABELS[s] || s)} <span class="text-slate-300">(${ms.length})</span></div>
-                    <div class="space-y-2">${ms.map(koCell).join('')}</div>
-                </div>`;
-            });
-            if (present.includes('THIRD_PLACE')) {
-                const ms = (S.matches || []).filter(m => m.stage === 'THIRD_PLACE');
-                columns.push(`<div class="shrink-0 w-44">
-                    <div class="text-[11px] font-bold text-amber-600 uppercase tracking-wide mb-2 text-center">3rd place</div>
-                    <div class="space-y-2">${ms.map(koCell).join('')}</div>
-                </div>`);
-            }
-            body.innerHTML = `<div class="flex gap-3 items-start min-w-min pt-1">${columns.join('')}</div>`;
+            const sorted = s => (S.matches || []).filter(m => m.stage === s).sort((a, b) => getMatchTime(a) - getMatchTime(b));
+            const r32 = sorted('LAST_32'), r16 = sorted('LAST_16'), qf = sorted('QUARTER_FINALS'),
+                sf = sorted('SEMI_FINALS'), fin = sorted('FINAL'), third = sorted('THIRD_PLACE');
+
+            const boxes = [];
+            for (let i = 0; i < 8; i++) boxes.push(bracketBoxHTML(r32[i], 0, bkYC(0, i)));
+            for (let i = 0; i < 4; i++) boxes.push(bracketBoxHTML(r16[i], 1, bkYC(1, i)));
+            for (let i = 0; i < 2; i++) boxes.push(bracketBoxHTML(qf[i], 2, bkYC(2, i)));
+            boxes.push(bracketBoxHTML(sf[0], 3, bkYC(3, 0)));
+            boxes.push(bracketBoxHTML(fin[0], 4, BK_FINAL_Y));
+            boxes.push(bracketBoxHTML(sf[1], 5, bkYC(3, 0)));
+            for (let i = 0; i < 2; i++) boxes.push(bracketBoxHTML(qf[2 + i], 6, bkYC(2, i)));
+            for (let i = 0; i < 4; i++) boxes.push(bracketBoxHTML(r16[4 + i], 7, bkYC(1, i)));
+            for (let i = 0; i < 8; i++) boxes.push(bracketBoxHTML(r32[8 + i], 8, bkYC(0, i)));
+
+            const paths = bkConnectors().map(d => `<path d="${d}" fill="none" stroke="#cbd5e1" stroke-width="1.5"/>`).join('');
+            const trophy = `<div style="position:absolute;left:${bkColX(4)}px;top:${BK_FINAL_Y - BK_BOX_H / 2 - 30}px;width:${BK_BOX_W}px;" class="text-center text-2xl leading-none">\uD83C\uDFC6</div>`;
+            const thirdLabelTop = BK_TOP + BK_P * 8 + 8;
+            const thirdBoxY = thirdLabelTop + 16 + BK_BOX_H / 2;
+            const thirdLabel = `<div style="position:absolute;left:${bkColX(4)}px;top:${thirdLabelTop}px;width:${BK_BOX_W}px;" class="text-center text-[10px] font-bold text-amber-600 uppercase tracking-wide">3rd place</div>`;
+            const thirdBox = bracketBoxHTML(third[0] || null, 4, thirdBoxY);
+
+            body.innerHTML = `<div class="relative mx-auto" style="width:${BK_W}px;height:${BK_H}px">
+                <svg class="absolute inset-0 pointer-events-none" width="${BK_W}" height="${BK_H}">${paths}</svg>
+                ${trophy}${boxes.join('')}${thirdLabel}${thirdBox}
+            </div>`;
         }
 
         function setupFilters() {
@@ -710,7 +778,9 @@
                 let scoreHTML;
                 if (isFinished) {
                     const ht = (m.htHome != null && m.htAway != null) ? `<span class="block text-[10px] text-slate-400 font-medium text-center mt-0.5">HT ${m.htHome}-${m.htAway}</span>` : '';
-                    scoreHTML = `<div class="text-center"><span class="font-bold text-xl text-slate-800 bg-slate-100 px-3 py-1 rounded-md">${m.homeScore ?? '-'} - ${m.awayScore ?? '-'}</span>${ht}</div>`;
+                    const dl = decidedLabel(m);
+                    const dlHTML = dl ? `<span class="block text-[10px] font-bold text-amber-600 text-center mt-0.5 uppercase">${esc(dl)}</span>` : '';
+                    scoreHTML = `<div class="text-center"><span class="font-bold text-xl text-slate-800 bg-slate-100 px-3 py-1 rounded-md">${m.homeScore ?? '-'} - ${m.awayScore ?? '-'}</span>${dlHTML}${ht}</div>`;
                 } else if (isLive) {
                     const min = m.minute != null ? `${m.minute}'` : 'LIVE';
                     scoreHTML = `<div class="text-center"><span class="font-bold text-xl text-red-600 bg-red-50 px-3 py-1 rounded-md">${m.homeScore ?? 0} - ${m.awayScore ?? 0}</span><span class="block text-[10px] font-bold text-red-600 mt-0.5"><span class="live-dot">&#9679;</span> ${min}</span></div>`;
@@ -968,6 +1038,18 @@
             document.getElementById('score-label-away').innerText = m.away;
             document.getElementById('score-home').value = m.homeScore != null ? m.homeScore : '';
             document.getElementById('score-away').value = m.awayScore != null ? m.awayScore : '';
+            // Advancer selector only matters for knockout rounds.
+            const wrap = document.getElementById('result-advancer-wrap');
+            const sel = document.getElementById('result-advancer');
+            const isKO = KO_SET.has(m.stage);
+            wrap.classList.toggle('hidden', !isKO);
+            if (isKO) {
+                sel.options[1].text = `${m.home} advanced`;
+                sel.options[2].text = `${m.away} advanced`;
+                sel.value = m.winner === 'HOME' || m.winner === 'AWAY' ? m.winner : '';
+            } else {
+                sel.value = '';
+            }
             document.getElementById('result-error').classList.add('hidden');
             document.getElementById('result-modal').classList.remove('hidden');
         }
@@ -975,9 +1057,10 @@
             const apiId = parseInt(document.getElementById('result-match-id').value, 10);
             const homeScore = parseInt(document.getElementById('score-home').value, 10);
             const awayScore = parseInt(document.getElementById('score-away').value, 10);
+            const winner = document.getElementById('result-advancer').value || null;
             const errEl = document.getElementById('result-error');
             if (isNaN(homeScore) || isNaN(awayScore)) { errEl.innerText = 'Enter both scores.'; errEl.classList.remove('hidden'); return; }
-            const { ok, data } = await api('/admin/result', { method: 'POST', body: { apiId, homeScore, awayScore } });
+            const { ok, data } = await api('/admin/result', { method: 'POST', body: { apiId, homeScore, awayScore, winner } });
             if (ok) { closeModal('result-modal'); await loadState(); if (data.settled) setTimeout(() => alert(`${data.settled} bet(s) settled.`), 100); }
             else { errEl.innerText = data.error || 'Failed.'; errEl.classList.remove('hidden'); }
         }

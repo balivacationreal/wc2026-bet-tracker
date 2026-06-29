@@ -38,6 +38,13 @@ export default defineSchema({
     htHome: v.union(v.number(), v.null()),
     htAway: v.union(v.number(), v.null()),
     status: v.string(),          // "Upcoming" | "Live" | "Finished"
+    // Knockout-aware result fields (optional; populated on sync / manual result):
+    regHome: v.optional(v.union(v.number(), v.null())),   // 90-minute / regulation score
+    regAway: v.optional(v.union(v.number(), v.null())),
+    winner: v.optional(v.union(v.string(), v.null())),    // "HOME" | "AWAY" | "DRAW" (incl. ET/pens)
+    decidedBy: v.optional(v.union(v.string(), v.null())), // "REGULAR" | "EXTRA_TIME" | "PENALTY_SHOOTOUT"
+    penHome: v.optional(v.union(v.number(), v.null())),
+    penAway: v.optional(v.union(v.number(), v.null())),
   }).index("by_apiId", ["apiId"]),
 
   // 1-on-1 bets. Becomes binding when both players have signed.

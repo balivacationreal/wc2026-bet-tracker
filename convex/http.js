@@ -144,6 +144,7 @@ route("/admin/result", "POST", httpAction(async (ctx, req) => {
   try {
     const out = await ctx.runMutation(internal.core.setMatchResult, {
       actorId: player._id, apiId: b.apiId, homeScore: b.homeScore, awayScore: b.awayScore,
+      winner: b.winner || null,
     });
     return jsonResponse(out);
   } catch (e) { return jsonResponse({ error: e.message }, 400); }
