@@ -130,6 +130,19 @@ export const upsertMatches = internalMutation({
         await ctx.db.insert("matches", m);
         added++;
       } else {
+        // Sync bet choices when team names change so choiceA/choiceB remain valid.
+        for (const [oldName, newName] of [[existing.home, m.home], [existing.away, m.away]]) {
+          if (oldName && newName && oldName !== newName) {
+            const bets = await ctx.db.query("bets").withIndex("by_match", (q) => q.eq("matchApiId", m.apiId)).collect();
+            for (const b of bets) {
+              const u = {};
+              if (b.choiceA === oldName) u.choiceA = newName;
+              if (b.choiceB === oldName) u.choiceB = newName;
+              if (b.handicapTeam === oldName) u.handicapTeam = newName;
+              if (Object.keys(u).length) await ctx.db.patch(b._id, u);
+            }
+          }
+        }
         await ctx.db.patch(existing._id, m);
         updated++;
       }
@@ -150,14 +163,19 @@ export const setMatchResult = internalMutation({
     if (!actor || actor.role !== "admin") throw new Error("Treasurer only.");
     const match = await getMatchByApiId(ctx, apiId);
     if (!match) throw new Error("Match not found.");
-    // Manual entry: treat the entered score as both the displayed and the 90-min basis.
-    // Overall winner: use the treasurer's choice if given, else derive from the score.
+    const KO_STAGES = new Set(["LAST_32", "LAST_16", "QUARTER_FINALS", "SEMI_FINALS", "THIRD_PLACE", "FINAL"]);
     const derived = homeScore > awayScore ? "HOME" : awayScore > homeScore ? "AWAY" : "DRAW";
     const finalWinner = winner === "HOME" || winner === "AWAY" ? winner : derived;
-    await ctx.db.patch(match._id, {
-      homeScore, awayScore, regHome: homeScore, regAway: awayScore,
-      winner: finalWinner, status: "Finished",
-    });
+    if (finalWinner === "DRAW" && match.stage && KO_STAGES.has(match.stage)) {
+      throw new Error("Knockout match must have a winner — select who advanced.");
+    }
+    // Preserve regulation scores captured by API sync; only copy the entered score when absent.
+    const resultPatch = { homeScore, awayScore, winner: finalWinner, status: "Finished" };
+    if (match.regHome == null && match.regAway == null) {
+      resultPatch.regHome = homeScore;
+      resultPatch.regAway = awayScore;
+    }
+    await ctx.db.patch(match._id, resultPatch);
     const settled = await settleAll(ctx);
     return { ok: true, settled };
   },

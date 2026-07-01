@@ -230,7 +230,7 @@
                 </div>
 
                 <button onclick="submitResult()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition">Save result &amp; settle</button>
-                <p class="text-[11px] text-slate-400 mt-3 text-center">Voor bets settle on the score you enter (90'); no-voor bets follow whoever advanced.</p>
+                <p class="text-[11px] text-slate-400 mt-3 text-center">Voor bets settle on the 90-min regulation score (from Sync for ET matches); no-voor bets follow whoever advanced.</p>
             </div>
         </div>
     </div>
@@ -1033,6 +1033,7 @@
         function openResultModal(apiId) {
             if (!isAdmin) return;
             const m = matchByApiId(apiId);
+            if (!m) return;
             document.getElementById('result-match-id').value = apiId;
             document.getElementById('score-label-home').innerText = m.home;
             document.getElementById('score-label-away').innerText = m.away;
@@ -1060,6 +1061,8 @@
             const winner = document.getElementById('result-advancer').value || null;
             const errEl = document.getElementById('result-error');
             if (isNaN(homeScore) || isNaN(awayScore)) { errEl.innerText = 'Enter both scores.'; errEl.classList.remove('hidden'); return; }
+            const m = matchByApiId(apiId);
+            if (m && KO_SET.has(m.stage) && homeScore === awayScore && !winner) { errEl.innerText = 'Scores are level — select who advanced.'; errEl.classList.remove('hidden'); return; }
             const { ok, data } = await api('/admin/result', { method: 'POST', body: { apiId, homeScore, awayScore, winner } });
             if (ok) { closeModal('result-modal'); await loadState(); if (data.settled) setTimeout(() => alert(`${data.settled} bet(s) settled.`), 100); }
             else { errEl.innerText = data.error || 'Failed.'; errEl.classList.remove('hidden'); }

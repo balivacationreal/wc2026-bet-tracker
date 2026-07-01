@@ -43,6 +43,7 @@ function toMatch(api) {
   const ht = score.halfTime || {};
   const rt = score.regularTime || null;        // 90-min score when the feed provides it
   const pens = score.penalties || null;
+  const knownET = score.duration === "EXTRA_TIME" || score.duration === "PENALTY_SHOOTOUT";
   const status = mapStatus(api.status);
   const hasScore = status === "Finished" || status === "Live";
   const isFinished = status === "Finished";
@@ -59,8 +60,8 @@ function toMatch(api) {
     htHome: ht.home ?? null, htAway: ht.away ?? null,
     status,
     // knockout-aware fields
-    regHome: hasScore ? ((rt && rt.home != null) ? rt.home : (ft.home ?? 0)) : null,
-    regAway: hasScore ? ((rt && rt.away != null) ? rt.away : (ft.away ?? 0)) : null,
+    regHome: hasScore ? ((rt && rt.home != null) ? rt.home : knownET ? null : (ft.home ?? 0)) : null,
+    regAway: hasScore ? ((rt && rt.away != null) ? rt.away : knownET ? null : (ft.away ?? 0)) : null,
     winner: isFinished ? mapWinner(score.winner) : null,
     decidedBy: score.duration || null,
     penHome: pens ? (pens.home ?? null) : null,

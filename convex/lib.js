@@ -18,9 +18,10 @@ export function betOutcome(match, bet) {
   const hasVoor = !!(bet.handicapTeam && bet.handicapValue > 0);
 
   if (hasVoor) {
-    // 90-minute score: prefer regulation score, fall back to the stored full-time score.
-    let home = match.regHome != null ? match.regHome : match.homeScore;
-    let away = match.regAway != null ? match.regAway : match.awayScore;
+    // Use regulation score; for ET/pen matches don't fall back to the full-time (ET) score.
+    const isKnownET = match.decidedBy === "EXTRA_TIME" || match.decidedBy === "PENALTY_SHOOTOUT";
+    let home = match.regHome != null ? match.regHome : (isKnownET ? null : match.homeScore);
+    let away = match.regAway != null ? match.regAway : (isKnownET ? null : match.awayScore);
     if (home == null || away == null) return null;
     if (bet.handicapTeam === match.home) home += bet.handicapValue || 0;
     if (bet.handicapTeam === match.away) away += bet.handicapValue || 0;
@@ -39,8 +40,10 @@ export function betOutcome(match, bet) {
   if (!side) {
     // Fallback for matches synced before winner was captured.
     if (match.homeScore == null || match.awayScore == null) return null;
-    side = match.homeScore > match.awayScore ? "HOME"
-         : match.awayScore > match.homeScore ? "AWAY" : "DRAW";
+    if (match.homeScore > match.awayScore) side = "HOME";
+    else if (match.awayScore > match.homeScore) side = "AWAY";
+    // Tied score with no winner field: defer until next sync populates match.winner.
+    else return null;
   }
   if (side === "DRAW") return { result: "push" };
   const winningTeam = side === "HOME" ? match.home : match.away;
