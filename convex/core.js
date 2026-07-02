@@ -379,9 +379,12 @@ export const buildState = internalQuery({
       });
     }
 
-    const accountsOut = accounts.map((a) => ({
-      playerId: a.playerId, name: nameById[a.playerId], deposited: a.deposited, balance: a.balance,
-    }));
+    const activePlayers = new Set(players.filter(p => p.active).map(p => p._id));
+    const accountsOut = accounts
+      .filter(a => activePlayers.has(a.playerId))
+      .map((a) => ({
+        playerId: a.playerId, name: nameById[a.playerId], deposited: a.deposited, balance: a.balance,
+      }));
 
     const getMeta = async (key) => {
       const row = await ctx.db.query("meta").withIndex("by_key", (q) => q.eq("key", key)).unique();
