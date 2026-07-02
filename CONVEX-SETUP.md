@@ -1,40 +1,30 @@
-# World Cup 2026 Bet Tracker — Convex migration & setup
+# World Cup 2026 Bet Tracker — Convex backend
 
-This replaces the old jsonbin + Netlify-Functions backend with a single **Convex**
-backend that adds two features:
-
-1. **Player accounts + two-party digital signatures.** Each player claims their own
-   password. A bet is *proposed* by one player (auto-signed) and becomes **binding only
-   when the named opponent signs**. Both signatures are stored as immutable, timestamped
-   records, and a bet's terms can't be edited after it's proposed.
-2. **Treasury / deposits.** The treasurer (Suta) records each player's deposit. When a
-   match finishes, every agreed bet on it settles in one atomic transaction — winner's
-   balance up, loser's down — and each move is written to an append-only ledger. Every
-   player's *deposited* and *current balance* are always shown.
-
-Netlify still hosts the static `index.html`. Everything else (data, auth, football-data
-sync) now lives in Convex.
+This document describes the Convex backend that replaced the original jsonbin + Netlify
+Functions architecture. It covers the current file layout, one-time setup, and day-to-day
+usage for whoever maintains the deployment.
 
 ---
 
-## What's in this repo now
+## What's in this repo
 
 ```
 wc2026-bet-tracker/
-├── index.html                 # frontend — talks to Convex HTTP Actions
+├── index.html                 # SPA — calls Convex HTTP Actions at CONVEX_HTTP
 ├── convex/
 │   ├── schema.js              # tables: players, sessions, matches, bets,
 │   │                          #         signatures, accounts, ledger, meta
-│   ├── lib.js                 # shared helpers (outcome calc, CORS, public player)
+│   ├── lib.js                 # shared helpers (bet-outcome calc incl. voor rule, CORS)
 │   ├── auth.js                # claim / login / change-password / sessions
 │   ├── core.js                # players, matches, bets, signatures, ledger, settlement
 │   ├── football.js            # football-data.org sync (rate-limit aware) + auto-settle
-│   └── http.js                # the public API (CORS + bearer-token auth)
-├── netlify.toml               # static hosting (functions no longer needed)
-└── netlify/functions/         # OLD — can be deleted after you verify Convex works
+│   ├── crons.js               # scheduled job: expire unsigned bets 30 min before kickoff
+│   └── http.js                # the public HTTP API (CORS + bearer-token auth)
+├── netlify.toml               # static hosting config (no build step)
+└── package.json               # one dependency: convex
 ```
 
-Your Convex deployment (already provisioned):
+Production deployment:
 - Cloud URL  → `https://reliable-stork-400.convex.cloud`
 - HTTP API   → `https://reliable-stork-400.convex.site`  ← the frontend calls this
 
@@ -45,124 +35,111 @@ const CONVEX_HTTP = "https://reliable-stork-400.convex.site";
 
 ---
 
-## One-time setup
+## One-time setup (for a new clone)
 
-### 1. Install Convex and link the project
-From the repo root (where `package.json` is — create one with `npm init -y` if you don't have it):
+### 1. Install and link
 
 ```bash
-npm install convex
+npm install
 npx convex dev
 ```
 
-The first `npx convex dev`:
-- asks you to log in,
-- prompts you to pick a project → choose the existing **reliable-stork-400**,
-- generates `convex/_generated/` and pushes all the functions,
-- then keeps watching for changes (leave it running while you work; Ctrl-C when done).
+`npx convex dev` logs you in, links the folder to the Convex project, generates
+`convex/_generated/`, and pushes functions to the **dev** deployment. Press Ctrl-C
+once connected; use it again when doing local development.
 
-> The `convex/_generated/` folder is created by this command — don't write it yourself.
-> The imports like `./_generated/server` and `./_generated/api` resolve once it runs.
-
-### 2. Set the backend environment variables
-These live in Convex now (not Netlify). Set them via the dashboard
-(**Settings → Environment Variables**) or the CLI:
+### 2. Set production environment variables
 
 ```bash
-npx convex env set FOOTBALL_DATA_TOKEN  your-football-data-token
-npx convex env set SETUP_SECRET         pick-a-long-random-string
+npx convex env set --prod FOOTBALL_DATA_TOKEN  <your-football-data-token>
+npx convex env set --prod SETUP_SECRET         <long-random-string>
 ```
 
-`FOOTBALL_DATA_API_KEY` is also accepted if you prefer that name. `SETUP_SECRET`
-protects the one-time seed endpoint below.
+`FOOTBALL_DATA_API_KEY` is also accepted as an alias for the token name.
 
-### 3. Seed the players (once)
-This creates all participants and marks **Suta** as the treasurer (admin). Run it once:
+### 3. Deploy to production
+
+```bash
+CONVEX_DEPLOYMENT=prod:reliable-stork-400 npx convex deploy
+```
+
+The `CONVEX_DEPLOYMENT` override is required when running non-interactively (e.g. from
+Claude Code or CI) because `.env.local` points to the dev deployment.
+
+### 4. Seed the admin and players (once)
 
 ```bash
 curl -X POST https://reliable-stork-400.convex.site/admin/seed \
   -H "Content-Type: application/json" \
-  -d '{
-        "secret": "the-SETUP_SECRET-you-set",
-        "adminName": "Suta",
-        "names": ["Ngurah","Wipradnyana","Wage","Suta","Ali Topan","Midun","Darsika","Sony"]
-      }'
+  -d '{"secret":"<SETUP_SECRET>","adminName":"Suta","names":[]}'
 ```
 
-Players start **unclaimed** (no password yet). After seeding you can delete `SETUP_SECRET`
-if you like, or keep it for re-seeding.
-
-### 4. Deploy the frontend
-Push to GitHub as usual; Netlify serves `index.html`. (Remember to clear the old
-`sed` build command — it's obsolete. You can keep Netlify hosting; the functions folder
-is no longer used.)
-
-### 5. Everyone claims their account
-Each player opens the site → **Log in** → picks their name → since they're unclaimed,
-the button says **Claim account** → they set their own password. Suta does this too
-(Suta will then see the treasurer controls: Sync, Deposit, ＋ Player, Set Result).
+Players are created **unclaimed** (no password). Each player then opens the site → Log in →
+Claim account → sets their own password. You can delete `SETUP_SECRET` after seeding.
 
 ---
 
-## Day-to-day
+## Day-to-day (treasurer)
 
-**Treasurer (Suta)**
-- **Sync** — pulls fixtures, scores, Golden Boot and standings from football-data.org.
-  Finished matches auto-settle agreed bets. (15s cooldown; stats refresh every ~5 min;
-  back-off on rate limits — same pacing as before.)
-- **Deposit** — record a player's deposit (use a negative number to make a correction).
-- **＋ Player** — add someone new (they then claim their own password).
-- **Set Result** — manually enter/override a final score; settles that match's bets.
+| Action | How |
+|---|---|
+| Update scores / standings | Log in → **Sync** button. Settled bets are handled automatically. |
+| Fix a knockout result | **Set result** on the match card → enter scores → pick who advanced |
+| Add a player | **＋ Player** button in the header |
+| Remove a player | × button next to their name in the treasury table (blocked if they have open/agreed bets) |
+| Record a deposit | **Deposit** button in the header |
 
-**Any logged-in player**
-- **Propose Bet** on an upcoming match: pick your team, choose an opponent (they take the
-  other team), set the stake and optional handicap. Proposing signs your side.
-- **Agree & sign** / **Reject** bets waiting for you (they appear in the amber inbox at the
-  top and on the match card). Once you sign, the bet is binding.
-- **my history** — your full deposit/win/loss ledger.
-
-A bet you propose can be **cancelled** until your opponent signs. The system blocks a
-proposal or signature if it would exceed your available balance (current balance minus
-the money already tied up in open + agreed bets), so the treasury can never go negative.
+**Bet lockout:** unsigned bets are automatically cancelled 30 minutes before kickoff by a
+background job (`crons.js`) that runs every minute. Players also can't propose or sign within
+this window — the server rejects the action.
 
 ---
 
-## Notes & cleanup
-
-- **Old bets don't migrate.** The jsonbin data used a different (peer-to-peer, no-signature)
-  model. Fixtures get re-pulled by Sync; bets are re-created in the new signed system.
-- **Retire the old backend** once Convex is verified: delete `netlify/functions/` and the
-  `JSONBIN_*` / `ADMIN_PASSWORD` Netlify environment variables. Keep Netlify for hosting.
-- **Rotate keys.** Your old football-data token (and the jsonbin key) were exposed in the
-  page source historically — generate fresh ones and put the new football-data token in
-  Convex (`FOOTBALL_DATA_TOKEN`).
-- **Auto-sync later (optional).** If you want hands-off updates during match days, Convex
-  Cron can call the sync on a schedule (e.g. every 2 minutes while games are live) with no
-  Netlify credits involved. Say the word and I'll add a `convex/crons.js`.
-- **Security scope.** This is lightweight session auth (SHA-256 + salt, 30-day bearer
-  tokens) suited to a friends' group — good enough to make a signature mean "this
-  authenticated person agreed at this time," not bank-grade identity.
-
----
-
-## Quick API reference (Convex HTTP Actions)
+## HTTP API reference
 
 Base: `https://reliable-stork-400.convex.site` · auth via `Authorization: Bearer <token>`
 
-| Method & path          | Auth        | Purpose                                  |
-|------------------------|-------------|------------------------------------------|
-| `POST /claim`          | none        | first-time: set your password            |
-| `POST /login`          | none        | log in                                   |
-| `POST /logout`         | player      | end session                              |
-| `POST /change-password`| player      | set a new password                       |
-| `GET  /state`          | optional    | everything the UI renders                |
-| `POST /ledger`         | player      | your transaction history                 |
-| `POST /bet/propose`    | player      | propose + sign a bet                     |
-| `POST /bet/sign`       | player      | opponent agrees → binding                |
-| `POST /bet/reject`     | player      | opponent rejects                         |
-| `POST /bet/cancel`     | proposer    | cancel before opponent signs             |
-| `POST /admin/sync`     | treasurer   | pull fixtures/scores/stats + settle      |
-| `POST /admin/result`   | treasurer   | set a final score + settle               |
-| `POST /admin/deposit`  | treasurer   | record a deposit / correction            |
-| `POST /admin/create-player` | treasurer | add a player                          |
-| `POST /admin/seed`     | setup secret| one-time bootstrap                       |
+| Method & path | Auth | Purpose |
+|---|---|---|
+| `POST /claim` | none | first-time: set your password |
+| `POST /login` | none | log in |
+| `POST /logout` | player | end session |
+| `POST /change-password` | player | set a new password |
+| `GET  /state` | optional | everything the UI renders (balances only when authed) |
+| `POST /ledger` | player | your transaction history |
+| `POST /bet/propose` | player | propose + sign a bet |
+| `POST /bet/sign` | player | opponent agrees → binding |
+| `POST /bet/reject` | player | opponent rejects |
+| `POST /bet/cancel` | proposer | cancel before opponent signs |
+| `POST /admin/sync` | treasurer | pull fixtures/scores/stats + settle |
+| `POST /admin/result` | treasurer | set a final score (+ optional advancer) and settle |
+| `POST /admin/deposit` | treasurer | record a deposit / correction |
+| `POST /admin/create-player` | treasurer | add a player |
+| `POST /admin/delete-player` | treasurer | deactivate a player (blocked if they have open/agreed bets) |
+| `POST /admin/seed` | setup secret | one-time bootstrap |
+
+---
+
+## Key design decisions
+
+**Why Convex replaced jsonbin + Netlify Functions**
+
+The old architecture stored all data as a single JSON blob in jsonbin. Adding signed bets
+(two-party agreement, immutable records) and a ledger with transactional settlement requires
+a real database with atomic writes — Convex provides this as a managed service with no
+infrastructure to maintain.
+
+**Voor (handicap) settlement rule**
+
+- With a handicap → settled on the **90-minute regulation score** (`regHome`/`regAway`)
+- No handicap → settled on the **overall winner** including extra time and penalties
+
+`regHome`/`regAway` are populated by Sync when the API provides `score.regularTime`. If
+the API omits it for an ET/pen match, those fields stay `null` and settlement defers until
+the next Sync. The treasurer can also Sync after ET to capture the regulation score.
+
+**Player deactivation (soft delete)**
+
+`deletePlayer` sets `active: false`. Historical bets, signatures, and ledger entries
+referencing the player are preserved. The player is excluded from the treasury display and
+can no longer log in.

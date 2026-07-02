@@ -37,7 +37,7 @@ netlify.toml
 README.md
 SETUP.md
 convex/
-  schema.js  lib.js  auth.js  core.js  football.js  http.js
+  schema.js  lib.js  auth.js  core.js  football.js  crons.js  http.js
 ```
 
 Then create a fresh GitHub repository and push:
@@ -197,10 +197,16 @@ proposing and signing bets.
 
 - **Updating scores:** log in as treasurer and tap **Sync**. Do it around kickoffs and full-time.
   The free football-data tier allows ~10 calls/min; the app paces itself, so just don't spam it.
+  Sync also auto-settles any agreed bets whose matches have finished.
 - **Fixing a result:** use **Set result** on a match card. For a knockout decided by extra time or
   penalties, also pick **"advanced to next round"** so no-voor bets settle on the real winner.
-- **Changing code later:** edit files, then for backend changes run `npx convex deploy`, and for
-  frontend changes just `git push` (your host redeploys the static page).
+- **Removing a player:** click the × button next to their name in the treasury table (treasurer
+  only). Blocked if they have any open or agreed bets. Historical data is preserved.
+- **Bet lockout:** bets are automatically cancelled 30 minutes before kickoff if the opponent
+  hasn't signed yet. A background job enforces this every minute — no manual action needed.
+- **Changing code later:** edit files, then for backend changes run
+  `CONVEX_DEPLOYMENT=prod:reliable-stork-400 npx convex deploy`, and for frontend changes
+  just `git push` (your host redeploys the static page).
 
 ---
 
