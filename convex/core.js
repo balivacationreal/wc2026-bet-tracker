@@ -317,6 +317,27 @@ export const cancelBet = internalMutation({
   },
 });
 
+export const deletePlayer = internalMutation({
+  args: { actorId: v.id("players"), playerId: v.id("players") },
+  handler: async (ctx, { actorId, playerId }) => {
+    const actor = await ctx.db.get(actorId);
+    if (!actor || actor.role !== "admin") throw new Error("Treasurer only.");
+    if (actorId === playerId) throw new Error("You can't remove yourself.");
+    const player = await ctx.db.get(playerId);
+    if (!player) throw new Error("Player not found.");
+    if (!player.active) throw new Error("Player is already removed.");
+    // Block removal while the player has financial exposure.
+    for (const status of ["awaiting_opponent", "agreed"]) {
+      const bets = await ctx.db.query("bets").withIndex("by_status", (q) => q.eq("status", status)).collect();
+      const mine = bets.filter(b => b.playerAId === playerId || b.playerBId === playerId);
+      if (mine.length > 0)
+        throw new Error(`Cannot remove ${player.name} — they have ${mine.length} ${status === "agreed" ? "binding" : "open"} bet(s). Wait for those to settle first.`);
+    }
+    await ctx.db.patch(playerId, { active: false });
+    return { ok: true };
+  },
+});
+
 // ---------- deposits ----------
 export const recordDeposit = internalMutation({
   args: { actorId: v.id("players"), playerId: v.id("players"), amount: v.number(), note: v.string() },

@@ -38,7 +38,8 @@ auth, and match syncing run on [Convex](https://convex.dev).
 **Treasurer (admin)**
 - **Sync** fixtures, scores, scorers, and standings from football-data.org
 - **Record deposits** (and corrections) per player
-- **Add players** at any time
+- **Add players** at any time; **remove players** via the × button in the treasury table
+  (blocked while the player has open or agreed bets; historical data is preserved)
 - **Set / override** a match result manually, which settles its bets — including an
   **"advanced to next round"** option for knockout games decided by extra time or penalties
 
@@ -171,6 +172,7 @@ Base: your `https://<your-deployment>.convex.site` · auth via `Authorization: B
 | `POST /admin/result` | treasurer | set a final score (+ optional advancer) and settle |
 | `POST /admin/deposit` | treasurer | record a deposit / correction |
 | `POST /admin/create-player` | treasurer | add a player |
+| `POST /admin/delete-player` | treasurer | deactivate a player (blocked if they have open/agreed bets) |
 | `POST /admin/seed` | setup secret | one-time bootstrap (creates the admin + any members) |
 
 ---

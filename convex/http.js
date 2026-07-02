@@ -172,6 +172,16 @@ route("/admin/create-player", "POST", httpAction(async (ctx, req) => {
   } catch (e) { return jsonResponse({ error: e.message }, 400); }
 }));
 
+route("/admin/delete-player", "POST", httpAction(async (ctx, req) => {
+  const { player, error } = await requireAdmin(ctx, req);
+  if (error) return error;
+  const b = await body(req);
+  try {
+    await ctx.runMutation(internal.core.deletePlayer, { actorId: player._id, playerId: b.playerId });
+    return jsonResponse({ ok: true });
+  } catch (e) { return jsonResponse({ error: e.message }, 400); }
+}));
+
 // One-time bootstrap, protected by a setup secret (set SETUP_SECRET in Convex env).
 route("/admin/seed", "POST", httpAction(async (ctx, req) => {
   const b = await body(req);
