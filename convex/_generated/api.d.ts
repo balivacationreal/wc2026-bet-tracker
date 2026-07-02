@@ -10,6 +10,7 @@
 
 import type * as auth from "../auth.js";
 import type * as core from "../core.js";
+import type * as crons from "../crons.js";
 import type * as football from "../football.js";
 import type * as http from "../http.js";
 import type * as lib from "../lib.js";
@@ -23,6 +24,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   core: typeof core;
+  crons: typeof crons;
   football: typeof football;
   http: typeof http;
   lib: typeof lib;
