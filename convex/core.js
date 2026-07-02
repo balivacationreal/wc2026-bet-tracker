@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { publicPlayer, betOutcome } from "./lib.js";
 
 const MIN_BET = 1000;
+const LOCKOUT_MS = 30 * 60 * 1000; // bets lock 30 min before kickoff
 const ACTIVE_BET_STATUSES = ["awaiting_opponent", "agreed"];
 
 // ---------- small helpers ----------
@@ -45,6 +46,24 @@ async function exposure(ctx, playerId, exceptBetId) {
 async function availableBalance(ctx, playerId, exceptBetId) {
   const acct = await getAccount(ctx, playerId);
   return acct.balance - (await exposure(ctx, playerId, exceptBetId));
+}
+
+// Cancel every awaiting_opponent bet whose kickoff is within LOCKOUT_MS. Idempotent.
+async function expireStaleAwaitingBets(ctx) {
+  const now = Date.now();
+  const pending = await ctx.db.query("bets").withIndex("by_status", (q) => q.eq("status", "awaiting_opponent")).collect();
+  let expired = 0;
+  for (const bet of pending) {
+    const match = await getMatchByApiId(ctx, bet.matchApiId);
+    if (!match || !match.utcDate) continue;
+    const kickoff = Date.parse(match.utcDate);
+    if (isNaN(kickoff)) continue;
+    if (now >= kickoff - LOCKOUT_MS) {
+      await ctx.db.patch(bet._id, { status: "cancelled" });
+      expired++;
+    }
+  }
+  return expired;
 }
 
 // Settle every agreed bet whose match is final. Idempotent.
@@ -147,6 +166,7 @@ export const upsertMatches = internalMutation({
         updated++;
       }
     }
+    await expireStaleAwaitingBets(ctx);
     const settled = await settleAll(ctx);
     return { added, updated, settled };
   },
@@ -181,6 +201,15 @@ export const setMatchResult = internalMutation({
   },
 });
 
+// Called by the cron every minute; also safe to call manually.
+export const expirePreKickoffBets = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const expired = await expireStaleAwaitingBets(ctx);
+    return { expired };
+  },
+});
+
 // ---------- bets ----------
 export const proposeBet = internalMutation({
   args: {
@@ -203,6 +232,11 @@ export const proposeBet = internalMutation({
     const match = await getMatchByApiId(ctx, a.matchApiId);
     if (!match) throw new Error("Match not found.");
     if (match.status !== "Upcoming") throw new Error("Betting is closed — this match has already started.");
+    if (match.utcDate) {
+      const kickoff = Date.parse(match.utcDate);
+      if (!isNaN(kickoff) && Date.now() >= kickoff - LOCKOUT_MS)
+        throw new Error("Betting is closed — bets lock 30 minutes before kickoff.");
+    }
 
     if (a.myChoice !== match.home && a.myChoice !== match.away) throw new Error("Pick must be one of the two teams.");
     const oppChoice = a.myChoice === match.home ? match.away : match.home;
@@ -240,6 +274,11 @@ export const signBet = internalMutation({
 
     const match = await getMatchByApiId(ctx, bet.matchApiId);
     if (!match || match.status !== "Upcoming") throw new Error("Too late — the match has already started.");
+    if (match.utcDate) {
+      const kickoff = Date.parse(match.utcDate);
+      if (!isNaN(kickoff) && Date.now() >= kickoff - LOCKOUT_MS)
+        throw new Error("Too late — bets lock 30 minutes before kickoff.");
+    }
 
     const availB = await availableBalance(ctx, bet.playerBId, bet._id);
     if (bet.amount > availB) throw new Error("You don't have enough available balance for this bet.");

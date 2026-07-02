@@ -55,6 +55,12 @@ auth, and match syncing run on [Convex](https://convex.dev).
    after it's proposed, so the two signatures always attest to fixed terms — this is the digital
    proof that replaces "we agreed on WhatsApp."
 
+> **Lockout rule — 30 minutes before kickoff**: any bet that has not been fully signed by both
+> players is automatically cancelled 30 minutes before the scheduled kickoff. This prevents
+> last-minute deals made after a match has effectively started (e.g. during warm-ups or after
+> line-ups are announced). New proposals are also rejected server-side within this window.
+> The lockout is enforced by a scheduled background job that runs every minute.
+
 ## How money works (treasury & settlement)
 
 - The treasurer records each player's **deposit**; balances are derived from an append-only
@@ -92,6 +98,7 @@ wc2026-bet-tracker/
 │   ├── auth.js             # claim / login / change-password / sessions (hashing)
 │   ├── core.js             # players, matches, bets, signatures, ledger, settlement, state
 │   ├── football.js         # football-data.org sync (rate-limit aware) + auto-settle
+│   ├── crons.js            # scheduled job: expire unsigned bets 30 min before kickoff
 │   └── http.js             # the public HTTP API (CORS + bearer-token auth)
 ├── package.json            # one dependency: the Convex CLI/runtime
 ├── netlify.toml            # static hosting config (no build step)

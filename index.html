@@ -352,6 +352,12 @@
             return m.date || '';
         }
 
+        function isBetLockout(m) {
+            if (!m || !m.utcDate) return false;
+            const kickoff = Date.parse(m.utcDate);
+            return !isNaN(kickoff) && Date.now() >= kickoff - 30 * 60 * 1000;
+        }
+
         function showLoading(on) { document.getElementById('loading-indicator').classList.toggle('hidden', !on); }
 
         async function api(path, { method = 'GET', body = null, auth = true } = {}) {
@@ -717,10 +723,14 @@
             if (bet.status === 'awaiting_opponent') {
                 statusLine = `<div class="mt-2 text-xs flex flex-col gap-0.5">${sigBadge(bet, 'A')}${sigBadge(bet, 'B')}</div>`;
                 if (isOpponent) {
-                    actions = `<div class="mt-2 flex gap-2">
-                        <button onclick="signBet('${bet._id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 rounded">&#9997;&#65039; Agree &amp; sign</button>
-                        <button onclick="rejectBet('${bet._id}')" class="bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold py-1.5 px-3 rounded">Reject</button>
-                    </div>`;
+                    if (isBetLockout(match)) {
+                        actions = `<div class="mt-2 text-xs font-bold text-amber-700 bg-amber-50 px-2 py-1.5 rounded">&#128274; Auto-cancels — bets lock 30 min before kickoff</div>`;
+                    } else {
+                        actions = `<div class="mt-2 flex gap-2">
+                            <button onclick="signBet('${bet._id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 rounded">&#9997;&#65039; Agree &amp; sign</button>
+                            <button onclick="rejectBet('${bet._id}')" class="bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold py-1.5 px-3 rounded">Reject</button>
+                        </div>`;
+                    }
                 } else if (isProposer) {
                     actions = `<button onclick="cancelBet('${bet._id}')" class="mt-2 text-xs text-slate-400 hover:text-red-600 underline">Cancel proposal</button>`;
                 }
@@ -794,10 +804,14 @@
                 const betsHTML = bets.length ? `<div class="mt-4 border-t pt-3"><ul class="space-y-2">${bets.map(b => renderBet(b, m)).join('')}</ul></div>` : '';
 
                 let actionsHTML = '';
-                const canPropose = viewer && m.status === 'Upcoming';
-                if (canPropose || isAdmin) {
+                const betLocked = m.status === 'Upcoming' && isBetLockout(m);
+                const canPropose = viewer && m.status === 'Upcoming' && !betLocked;
+                if (canPropose || isAdmin || (viewer && betLocked)) {
+                    const proposeBtnHTML = canPropose
+                        ? `<button onclick="openBetModal(${m.apiId})" class="flex-1 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 py-2 rounded-lg text-sm font-bold transition">Propose Bet</button>`
+                        : (viewer && betLocked ? `<span class="flex-1 text-center text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 py-2 rounded-lg">&#128274; Bets locked</span>` : '');
                     actionsHTML = `<div class="mt-4 flex gap-2">
-                        ${canPropose ? `<button onclick="openBetModal(${m.apiId})" class="flex-1 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 py-2 rounded-lg text-sm font-bold transition">Propose Bet</button>` : ''}
+                        ${proposeBtnHTML}
                         ${isAdmin ? `<button onclick="openResultModal(${m.apiId})" class="flex-1 ${isFinished ? 'bg-slate-600 hover:bg-slate-700' : 'bg-blue-600 hover:bg-blue-700'} text-white py-2 rounded-lg text-sm font-bold transition">${isFinished ? 'Edit Result' : 'Set Result'}</button>` : ''}
                     </div>`;
                 }
@@ -832,13 +846,17 @@
                 const m = matchByApiId(b.matchApiId);
                 const teams = m ? `${esc(m.home)} vs ${esc(m.away)}` : 'match';
                 const hc = (b.handicapTeam && b.handicapValue > 0) ? ` \u00b7 Voor ${esc(b.handicapTeam)} +${b.handicapValue}` : '';
+                const locked = m && isBetLockout(m);
+                const inboxActions = locked
+                    ? `<div class="mt-2 text-xs font-bold text-amber-700 bg-amber-50 px-2 py-1.5 rounded">&#128274; Auto-cancels \u2014 bets lock 30 min before kickoff</div>`
+                    : `<div class="mt-2 flex gap-2">
+                        <button onclick="signBet('${b._id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 rounded">&#9997;&#65039; Agree &amp; sign</button>
+                        <button onclick="rejectBet('${b._id}')" class="bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold py-1.5 px-3 rounded">Reject</button>
+                    </div>`;
                 return `<li class="bg-white rounded-lg p-3 border border-amber-200">
                     <div class="text-sm"><b>${esc(b.playerA)}</b> (${esc(b.choiceA)}) vs <b>you</b> (${esc(b.choiceB)}) \u2014 <b>${formatIDR(b.amount)}</b></div>
                     <div class="text-xs text-slate-500 mt-0.5">${teams}${hc}</div>
-                    <div class="mt-2 flex gap-2">
-                        <button onclick="signBet('${b._id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 rounded">&#9997;&#65039; Agree &amp; sign</button>
-                        <button onclick="rejectBet('${b._id}')" class="bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold py-1.5 px-3 rounded">Reject</button>
-                    </div>
+                    ${inboxActions}
                 </li>`;
             }).join('');
         }
@@ -954,6 +972,7 @@
             if (!viewer) return;
             const m = matchByApiId(apiId);
             if (!m) return;
+            if (isBetLockout(m)) { alert('Betting is locked — bets close 30 minutes before kickoff.'); return; }
             document.getElementById('bet-match-id').value = apiId;
             document.getElementById('bet-modal-title').innerText = `Propose \u00b7 ${m.home} vs ${m.away}`;
             document.getElementById('bet-mychoice').innerHTML = `<option value="${esc(m.home)}">${esc(m.home)}</option><option value="${esc(m.away)}">${esc(m.away)}</option>`;
